@@ -138,7 +138,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nCreate Mint Account: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nCreate Mint Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -225,7 +225,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nCreate Sender Token Account: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nCreate Sender Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -254,7 +254,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nMint Tokens: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nMint Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -288,7 +288,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nDeposit Tokens: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nDeposit Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -357,7 +357,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nApply Pending Balance: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nApply Pending Balance: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -437,7 +437,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nCreate Recipient Token Account: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nCreate Recipient Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -563,7 +563,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nCreate Range Proof Context State: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nCreate Range Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -589,7 +589,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nInitialize Range Proof Context State: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nInitialize Range Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -634,7 +634,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-            "\nCreate and Initialize Equality Proof Context State: https://solana.fm/tx/{}?cluster=localnet-solana",
+            "\nCreate and Initialize Equality Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
             transaction_signature
         );
 
@@ -679,7 +679,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-            "\nCreate and Initialize Ciphertext Validity Proof Context State: https://solana.fm/tx/{}?cluster=localnet-solana",
+            "\nCreate and Initialize Ciphertext Validity Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
             transaction_signature
         );
 
@@ -723,7 +723,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-            "\nConfidential Transfer with Split Proofs: https://solana.fm/tx/{}?cluster=localnet-solana",
+            "\nConfidential Transfer with Split Proofs: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
             transaction_signature
         );
 
@@ -776,7 +776,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nClose Proof Accounts: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nClose Proof Accounts: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -836,7 +836,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nCreate Withdraw Proof Account: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nCreate Withdraw Proof Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -856,7 +856,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nInitialize Withdraw Proof Account: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nInitialize Withdraw Proof Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -895,7 +895,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nWithdraw Tokens: https://solana.fm/tx/{}?cluster=localnet-solana",
+        "\nWithdraw Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
