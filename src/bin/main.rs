@@ -69,6 +69,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     client.request_airdrop(&wallet_1.pubkey(), LAMPORTS_PER_SOL)?;
     client.request_airdrop(&wallet_2.pubkey(), LAMPORTS_PER_SOL)?;
 
+    //Hack: To await airdrop settlement. Refactor to use async/await with appropriate commitment.
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; 
+    
     // 2. Create Mint Account ----------------------------------------------------
 
     let mint = Keypair::new();
