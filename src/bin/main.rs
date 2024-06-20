@@ -783,13 +783,90 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 12. Withdraw Tokens ------------------------------------------------------
+    // 12. Apply Pending Balance -------------------------------------------------
+
+    // The "pending" balance must be applied to "available" balance before it can be withdrawn
+
+    // A "non-blocking" RPC client (for async calls)
+    let rpc_client = NonBlockingRpcClient::new_with_commitment(
+        String::from("http://127.0.0.1:8899"),
+        CommitmentConfig::confirmed(),
+    );
+
+    let program_client =
+        ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
+
+    // Create a "token" client, to use various helper functions for Token Extensions
+    let token = Token::new(
+        Arc::new(program_client),
+        &spl_token_2022::id(),
+        &mint.pubkey(),
+        Some(decimals),
+        Arc::new(wallet_2.insecure_clone()),
+    );
+
+    // Get receiver token account data
+    let token_account_info = token
+        .get_account_info(&recipient_associated_token_address)
+        .await?;
+
+    // Unpack the ConfidentialTransferAccount extension portion of the token account data
+    let confidential_transfer_account =
+        token_account_info.get_extension::<ConfidentialTransferAccount>()?;
+
+    // ConfidentialTransferAccount extension information needed to construct an `ApplyPendingBalance` instruction.
+    let apply_pending_balance_account_info =
+        ApplyPendingBalanceAccountInfo::new(confidential_transfer_account);
+
+    // Return the number of times the pending balance has been credited
+    let expected_pending_balance_credit_counter =
+        apply_pending_balance_account_info.pending_balance_credit_counter();
+
+    // Create the ElGamal keypair and AES key for the recipient token account
+    let receiver_elgamal_keypair =
+        ElGamalKeypair::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
+            .unwrap();
+    let receiver_aes_key =
+        AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
+            .unwrap();
+
+    // Update the decryptable available balance (add pending balance to available balance)
+    let new_decryptable_available_balance = apply_pending_balance_account_info
+        .new_decryptable_available_balance(&receiver_elgamal_keypair.secret(), &receiver_aes_key)
+        .map_err(|_| TokenError::AccountDecryption)?;
+
+    // Create a `ApplyPendingBalance` instruction
+    let apply_pending_balance_instruction = apply_pending_balance(
+        &spl_token_2022::id(),
+        &recipient_associated_token_address,        // Token account
+        expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
+        new_decryptable_available_balance, // Cipher text of the new decryptable available balance
+        &wallet_2.pubkey(),                // Token account owner
+        &[&wallet_2.pubkey()],             // Additional signers
+    )?;
+
+    let recent_blockhash = client.get_latest_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        &[apply_pending_balance_instruction],
+        Some(&wallet_2.pubkey()),
+        &[&wallet_2],
+        recent_blockhash,
+    );
+
+    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
+
+    println!(
+        "\nApply Pending Balance (to recipient): https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        transaction_signature
+    );
+
+    // 13. Withdraw Tokens ------------------------------------------------------
 
     let withdraw_amount = 20_00;
 
     // Get recipient token account data
     let token_account = token
-        .get_account_info(&sender_associated_token_address)
+        .get_account_info(&recipient_associated_token_address)
         .await?;
 
     // Unpack the ConfidentialTransferAccount extension portion of the token account data
@@ -801,15 +878,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create a withdraw proof data
     let proof_data = withdraw_account_info.generate_proof_data(
         withdraw_amount,
-        &sender_elgamal_keypair,
-        &sender_aes_key,
+        &receiver_elgamal_keypair,
+        &receiver_aes_key,
     )?;
 
     // Generate address for withdraw proof account
     let withdraw_proof_context_state_account = Keypair::new();
     let withdraw_proof_pubkey = withdraw_proof_context_state_account.pubkey();
     // Authority for the withdraw proof account (to close the account)
-    let context_state_authority = &wallet_1;
+    let context_state_authority = &wallet_2;
 
     let space = std::mem::size_of::<ProofContextState<WithdrawProofContext>>();
     let rent = client.get_minimum_balance_for_rent_exemption(space)?;
@@ -821,7 +898,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Instruction to create the withdraw proof account
     let create_withdraw_proof_account = create_account(
-        &wallet_1.pubkey(),
+        &wallet_2.pubkey(),
         &withdraw_proof_pubkey,
         rent,
         space as u64,
@@ -831,8 +908,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &[create_withdraw_proof_account],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1, &withdraw_proof_context_state_account],
+        Some(&wallet_2.pubkey()),
+        &[&wallet_2, &withdraw_proof_context_state_account],
         recent_blockhash,
     );
 
@@ -851,8 +928,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &[verify_withdraw_proof_instruction],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
+        Some(&wallet_2.pubkey()),
+        &[&wallet_2],
         recent_blockhash,
     );
 
@@ -865,7 +942,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Update the decryptable available balance
     let new_decryptable_available_balance = withdraw_account_info
-        .new_decryptable_available_balance(withdraw_amount, &sender_aes_key)
+        .new_decryptable_available_balance(withdraw_amount, &receiver_aes_key)
         .map_err(|_| TokenError::AccountDecryption)?;
 
     // let balance = new_decryptable_available_balance.decrypt(&aes_key);
@@ -877,21 +954,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create a `Withdraw` instruction
     let withdraw_instruction = withdraw(
         &spl_token_2022::id(),
-        &sender_associated_token_address,
+        &recipient_associated_token_address,
         &mint.pubkey(),
         withdraw_amount,
         decimals,
         new_decryptable_available_balance,
-        &wallet_1.pubkey(),
-        &[&wallet_1.pubkey()],
+        &wallet_2.pubkey(),
+        &[&wallet_2.pubkey()],
         proof_location,
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &withdraw_instruction,
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
+        Some(&wallet_2.pubkey()),
+        &[&wallet_2],
         recent_blockhash,
     );
 
