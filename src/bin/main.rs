@@ -54,12 +54,20 @@ use std::{error::Error, mem::size_of, sync::Arc};
 
 use keypair_utils::get_or_create_keypair;
 
+mod signers;
+use signers::load_signer_from_ledger;
+
+use simple_logger::SimpleLogger;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // 1. Create sender and recipient wallet keypairs -----------------------------------
+    // Initialize the logger with the trace level
+    SimpleLogger::new().with_level(log::LevelFilter::Trace).init().unwrap();
 
-    let wallet_1 = get_or_create_keypair("wallet_1")?;
-    let wallet_2 = get_or_create_keypair("wallet_2")?;
+
+    // 1. Create sender and recipient wallet keypairs -----------------------------------
+    let wallet_1 = Arc::new(load_signer_from_ledger("wallet_1", false)?);
+    let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
 
     let client = RpcClient::new_with_commitment(
         String::from("http://127.0.0.1:8899"),
@@ -135,7 +143,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
         Some(&wallet_1.pubkey()),
-        &[&wallet_1, &mint],
+        &[&wallet_1, &mint as &dyn Signer],
         recent_blockhash,
     );
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
@@ -314,7 +322,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &mint.pubkey(),
         Some(decimals),
-        Arc::new(wallet_1.insecure_clone()),
+        wallet_1.clone(),
     );
 
     // Get sender token account data
@@ -559,7 +567,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction = Transaction::new_signed_with_payer(
         &[create_range_proof_account_instruction],
         Some(&wallet_1.pubkey()),
-        &[&wallet_1, &range_proof_context_state_account], // Signers
+        &[&wallet_1, &range_proof_context_state_account as &dyn Signer], // Signers
         recent_blockhash,
     );
 
@@ -630,7 +638,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
         Some(&wallet_1.pubkey()),
-        &[&wallet_1, &equality_proof_context_state_account], // Signers
+        &[&wallet_1, &equality_proof_context_state_account as &dyn Signer], // Signers
         recent_blockhash,
     );
 
@@ -675,7 +683,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
         Some(&wallet_1.pubkey()),
-        &[&wallet_1, &ciphertext_validity_proof_context_state_account], // Signers
+        &[&wallet_1, &ciphertext_validity_proof_context_state_account as &dyn Signer], // Signers
         recent_blockhash,
     );
 
@@ -802,7 +810,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &mint.pubkey(),
         Some(decimals),
-        Arc::new(wallet_2.insecure_clone()),
+        wallet_2.clone(),
     );
 
     // Get receiver token account data

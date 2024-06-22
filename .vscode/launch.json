@@ -377,21 +377,20 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'main'",
+            "name": "Debug executable 'signers'",
             "cargo": {
                 "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=main",
+                    "build",
+                    "--bin=signers",
                     "--package=keypair_utils"
                 ],
                 "filter": {
-                    "name": "main",
+                    "name": "signers",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["usb://ledger"],
             "cwd": "${workspaceFolder}"
-        }
+        },
     ]
 }

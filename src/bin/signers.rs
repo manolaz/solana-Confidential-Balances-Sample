@@ -1,30 +1,45 @@
-use clap::{value_t_or_exit, App, Arg};
-use solana_clap_utils::keypair::signer_from_path;
-use solana_clap_utils::offline::OfflineArgs;
-
+use solana_remote_wallet::*;
+use solana_sdk::{
+    hash::Hash, 
+    message, 
+    native_token::LAMPORTS_PER_SOL, 
+    signer::Signer, 
+    system_instruction, 
+    transaction::Transaction
+};
 
 #[tokio::main]
 #[allow(dead_code)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let clap_app = App::new("my-program")
-        // The argument we'll parse as a signer "path"
-        .arg(
-            Arg::with_name("keypair")
-                .required(true)
-                .help("The default signer"),
-        )
-        .offline_args();
+      
+    let signer = load_signer_from_ledger("wallet0", false)?;
+    println!("Signer: {:?}", signer.pubkey);
 
-    let clap_matches = clap_app.get_matches();
-    let keypair_str = value_t_or_exit!(clap_matches, "keypair", String);
-    let mut wallet_manager = None;
-    let signer = signer_from_path(&clap_matches, &keypair_str, "keypair", &mut wallet_manager)?;
+    // Transfer SOL to another account
+    let to = signer.pubkey();
+    let from = signer.pubkey();
+    let amount = LAMPORTS_PER_SOL * 42;
+    let recent_blockhash = Hash::default();
+    let ix = system_instruction::transfer(&from, &to, amount);
+    let message = message::Message::new(&[ix], Some(&from));
+    let mut transaction = Transaction::new_unsigned(
+        message,
+    );
 
-    print!("Signer pubkey: {}\n", signer.pubkey());
+    println!("Txn Signature START");
+    transaction.try_sign(&[&signer], recent_blockhash)?;
+    println!("Txn Signature END: {:?}", transaction.signatures[0]);
+
+
+    println!("Message Signature START");
+    let message = b"hello, world!";
+    let sig = signer.try_sign_message(message)?; // Error: Protocol("Ledger received invalid Solana message")
+    println!("Message Signature END: {:?}", sig);
+
     Ok(())
 }
 
-use solana_remote_wallet::*;
+
 
 pub fn load_signer_from_ledger(keypair_name:&str, confirm_key : bool) -> Result< remote_keypair::RemoteKeypair, Box<dyn std::error::Error>> {
     let wallet_manager = remote_wallet::maybe_wallet_manager()?.unwrap();
