@@ -54,9 +54,6 @@ use std::{error::Error, mem::size_of, sync::Arc};
 
 use keypair_utils::get_or_create_keypair;
 
-mod signers;
-use signers::load_signer_from_ledger;
-
 use simple_logger::SimpleLogger;
 
 #[tokio::main]
@@ -66,7 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
     // 1. Create sender and recipient wallet keypairs -----------------------------------
-    let wallet_1 = Arc::new(load_signer_from_ledger("wallet_1", false)?);
+    let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
 
     let client = RpcClient::new_with_commitment(
