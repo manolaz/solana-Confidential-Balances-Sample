@@ -13,6 +13,22 @@ use solana_sdk::{
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
+
+use spl_token_confidential_transfer_proof_extraction::{
+    burn::BurnProofContext, mint::MintProofContext, transfer::TransferProofContext,
+    transfer_with_fee::TransferWithFeeProofContext, withdraw::WithdrawProofContext, 
+    instruction::ProofLocation,
+    instruction::ProofData
+};
+
+use spl_token_confidential_transfer_proof_generation::{
+    burn::{burn_split_proof_data, BurnProofData},
+    mint::{mint_split_proof_data, MintProofData},
+    transfer::{transfer_split_proof_data, TransferProofData},
+    transfer_with_fee::{transfer_with_fee_split_proof_data, TransferWithFeeProofData},
+    withdraw::{withdraw_proof_data, WithdrawProofData},
+};
+
 use spl_token_2022::{
     error::TokenError,
     extension::{
@@ -21,34 +37,42 @@ use spl_token_2022::{
                 ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
             },
             instruction::{
-                apply_pending_balance, configure_account, deposit, transfer_with_split_proofs,
-                withdraw, PubkeyValidityData, TransferSplitContextStateAccounts,
+                apply_pending_balance, configure_account, deposit, inner_transfer, //transfer_with_split_proofs,
+                withdraw, PubkeyValidityProofData, //TransferSplitContextStateAccounts,
             },
             ConfidentialTransferAccount, ConfidentialTransferMint,
         },
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::{initialize_mint, mint_to, reallocate},
-    proof::ProofLocation,
-    solana_zk_token_sdk::{
+    solana_zk_sdk::{
         encryption::{
             auth_encryption::AeKey,
             elgamal::{self, ElGamalKeypair},
+            pod::elgamal::PodElGamalPubkey,
         },
-        instruction::ciphertext_commitment_equality::CiphertextCommitmentEqualityProofContext,
-        zk_token_elgamal::pod::ElGamalPubkey,
-        zk_token_proof_instruction::{
-            close_context_state, BatchedGroupedCiphertext2HandlesValidityProofContext,
-            BatchedRangeProofContext, ContextStateInfo, ProofInstruction, WithdrawProofContext,
+        //zk_token_elgamal::pod::ElGamalPubkey,
+        // zk_token_proof_instruction::{
+        //     close_context_state, BatchedGroupedCiphertext2HandlesValidityProofContext,
+        //     BatchedRangeProofContext, ContextStateInfo, ProofInstruction, WithdrawProofContext,
+        // },
+        zk_elgamal_proof_program::{
+            self, 
+            proof_data::CiphertextCommitmentEqualityProofContext, 
+            proof_data::BatchedRangeProofContext,
+            proof_data::BatchedGroupedCiphertext3HandlesValidityProofContext,
+            state::ProofContextState,
+            instruction::ProofInstruction,
+            instruction::ContextStateInfo,
+            instruction::close_context_state,
+
         },
-        zk_token_proof_program,
-        zk_token_proof_state::ProofContextState,
     },
     state::{Account, Mint},
 };
 use spl_token_client::{
-    client::{ProgramRpcClient, ProgramRpcClientSendTransaction},
-    token::{ExtensionInitializationParams, Token},
+    client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
+    token::{ExtensionInitializationParams, Token, ProofAccount},
 };
 use std::{error::Error, mem::size_of, sync::Arc};
 
@@ -59,7 +83,7 @@ use simple_logger::SimpleLogger;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the logger with the trace level
-    SimpleLogger::new().with_level(log::LevelFilter::Trace).init().unwrap();
+    SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
 
 
     // 1. Create sender and recipient wallet keypairs -----------------------------------
@@ -195,11 +219,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // It includes the cryptographic proof as well as the context data information needed to verify the proof.
     // Generating the proof data client-side (instead of using a separate proof account)
     let proof_data =
-        PubkeyValidityData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
+        PubkeyValidityProofData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
 
     // `InstructionOffset` indicates that proof is included in the same transaction
     // This means that the proof instruction offset must be always be 1.
-    let proof_location = ProofLocation::InstructionOffset(1.try_into().unwrap(), &proof_data);
+    let proof_location = ProofLocation::InstructionOffset(
+        1.try_into().unwrap(), 
+        ProofData::InstructionData(&proof_data)
+    );
 
     // Instructions to configure the token account, including the proof instruction
     // Appends the `VerifyPubkeyValidityProof` instruction right after the `ConfigureAccount` instruction.
@@ -207,7 +234,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),                  // Program ID
         &&sender_associated_token_address,      // Token account
         &mint.pubkey(),                         // Mint
-        decryptable_balance,                    // Initial balance
+        decryptable_balance.into(),                    // Initial balance
         maximum_pending_balance_credit_counter, // Maximum pending balance credit counter
         &wallet_1.pubkey(),                     // Token Account Owner
         &[],                                    // Additional signers
@@ -349,7 +376,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &sender_associated_token_address,        // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
-        new_decryptable_available_balance, // Cipher text of the new decryptable available balance
+        new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
         &wallet_1.pubkey(),                // Token account owner
         &[&wallet_1.pubkey()],             // Additional signers
     )?;
@@ -408,19 +435,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Create proof data for Pubkey Validity
     let proof_data =
-        PubkeyValidityData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
+        PubkeyValidityProofData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
 
     // The proof is included in the same transaction of a corresponding token-2022 instruction
     // Appends the proof instruction right after the `ConfigureAccount` instruction.
     // This means that the proof instruction offset must be always be 1.
-    let proof_location = ProofLocation::InstructionOffset(1.try_into().unwrap(), &proof_data);
+    let proof_location = ProofLocation::InstructionOffset(1.try_into().unwrap(), ProofData::InstructionData(&proof_data));
 
     // Configure account with the proof
     let configure_account_instruction = configure_account(
         &spl_token_2022::id(),
         &recipient_associated_token_address,
         &mint.pubkey(),
-        decryptable_balance,
+        decryptable_balance.into(),
         maximum_pending_balance_credit_counter,
         &wallet_2.pubkey(),
         &[],
@@ -473,15 +500,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let range_proof_context_state_account = Keypair::new();
     let range_proof_pubkey = range_proof_context_state_account.pubkey();
 
-    // Type for split transfer (without fee) instruction proof context state account addresses intended to be used as parameters to functions.
-    let transfer_context_state_accounts = TransferSplitContextStateAccounts {
-        equality_proof: &equality_proof_pubkey,
-        ciphertext_validity_proof: &ciphertext_validity_proof_pubkey,
-        range_proof: &range_proof_pubkey,
-        authority: &context_state_authority.pubkey(),
-        no_op_on_uninitialized_split_context_state: false,
-        close_split_context_state_accounts: None,
-    };
+    // // Type for split transfer (without fee) instruction proof context state account addresses intended to be used as parameters to functions.
+    // let transfer_context_state_accounts = TransferProofData {
+    //     equality_proof_data: &equality_proof_pubkey,
+    //     ciphertext_validity_proof_data: &ciphertext_validity_proof_pubkey,
+    //     range_proof_data: &range_proof_pubkey,
+    //     authority: &context_state_authority.pubkey(),
+    //     no_op_on_uninitialized_split_context_state: false,
+    //     close_split_context_state_accounts: None,
+    // };
 
     // Get sender token account data
     let token_account_info = token
@@ -516,7 +543,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mint_account = token.get_account(mint.pubkey()).await?;
 
     // Get auditor ElGamal pubkey from the mint account data
-    let auditor_elgamal_pubkey_option = Option::<ElGamalPubkey>::from(
+    let auditor_elgamal_pubkey_option = Option::<PodElGamalPubkey>::from(
         StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)?
             .get_extension::<ConfidentialTransferMint>()?
             .auditor_elgamal_pubkey,
@@ -527,23 +554,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .ok_or("No Auditor ElGamal pubkey")?
         .try_into()?;
 
+    // 9. Create 3 proofs ------------------------------------------------------
+
     // Generate proof data
-    let (
+    let TransferProofData {
         equality_proof_data,
         ciphertext_validity_proof_data,
         range_proof_data,
-        source_decrypt_handles,
-    ) = transfer_account_info
-        .generate_split_transfer_proof_data(
+    } = transfer_split_proof_data(
+            &sender_elgamal_keypair.pubkey().encrypt(transfer_amount),
+            &sender_aes_key.encrypt(transfer_amount),
             transfer_amount,
             &sender_elgamal_keypair,
             &sender_aes_key,
             &recipient_elgamal_pubkey,
-            Some(&auditor_elgamal_pubkey),
+            Some(&auditor_elgamal_pubkey)
         )
         .unwrap();
-
-    // 9. Create 3 proofs ------------------------------------------------------
 
     // Range Proof ------------------------------------------------------------------------------
 
@@ -557,7 +584,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &range_proof_context_state_account.pubkey(),
         rent,
         space as u64,
-        &zk_token_proof_program::id(),
+        &zk_elgamal_proof_program::id(),
     );
 
     let recent_blockhash = client.get_latest_blockhash()?;
@@ -580,8 +607,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let verify_proof_instruction = ProofInstruction::VerifyBatchedRangeProofU128
         .encode_verify_proof(
             Some(ContextStateInfo {
-                context_state_account: transfer_context_state_accounts.range_proof,
-                context_state_authority: transfer_context_state_accounts.authority,
+                context_state_account: &range_proof_pubkey,
+                context_state_authority: &context_state_authority.pubkey(),
             }),
             &range_proof_data,
         );
@@ -610,18 +637,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create Account for Equality Proof
     let create_equality_proof_account_instruction = create_account(
         &wallet_1.pubkey(),
-        &transfer_context_state_accounts.equality_proof,
+        &equality_proof_pubkey,
         rent,
         space as u64,
-        &zk_token_proof_program::id(),
+        &zk_elgamal_proof_program::id(),
     );
 
     // Instruction to initialize account with proof data
     let verify_equality_proof_instruction = ProofInstruction::VerifyCiphertextCommitmentEquality
         .encode_verify_proof(
             Some(ContextStateInfo {
-                context_state_account: transfer_context_state_accounts.equality_proof,
-                context_state_authority: transfer_context_state_accounts.authority,
+                context_state_account: &equality_proof_pubkey,
+                context_state_authority: &context_state_authority.pubkey(),
             }),
             &equality_proof_data,
         );
@@ -649,24 +676,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Ciphertext Validity Proof ----------------------------------------------------------------
 
     let space =
-        size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
+        size_of::<ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>>();
     let rent = client.get_minimum_balance_for_rent_exemption(space)?;
 
     // Create Account for Ciphertext Validity Proof
     let create_ciphertext_validity_proof_account_instruction = create_account(
         &wallet_1.pubkey(),
-        &transfer_context_state_accounts.ciphertext_validity_proof,
+        &ciphertext_validity_proof_pubkey,
         rent,
         space as u64,
-        &zk_token_proof_program::id(),
+        &zk_elgamal_proof_program::id(),
     );
 
     // Instruction to initialize account with proof data
     let verify_ciphertext_validity_proof_instruction =
-        ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity.encode_verify_proof(
+        ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity.encode_verify_proof(
             Some(ContextStateInfo {
-                context_state_account: transfer_context_state_accounts.ciphertext_validity_proof,
-                context_state_authority: transfer_context_state_accounts.authority,
+                context_state_account: &ciphertext_validity_proof_pubkey,
+                context_state_authority: &context_state_authority.pubkey(),
             }),
             &ciphertext_validity_proof_data,
         );
@@ -708,16 +735,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .new_decryptable_available_balance(transfer_amount, &sender_aes_key)
         .map_err(|_| TokenError::AccountDecryption)?;
 
-    // Create the 'transfer_with_split_proofs' instruction
-    let transfer_with_split_proofs_instruction = transfer_with_split_proofs(
+    // Create the confidential 'transfer' instruction
+    let transfer_with_split_proofs_instruction = inner_transfer(
         &spl_token_2022::id(),
         &sender_associated_token_address,    // Source token account
         &mint.pubkey(),                      // Mint
         &recipient_associated_token_address, // Destination token account
         new_decryptable_available_balance.into(), // Updated source token account available balance
         &wallet_1.pubkey(),                  // Source token account owner
-        transfer_context_state_accounts,     // Proof context state accounts
-        &source_decrypt_handles, // The ElGamal ciphertext decryption handle of the transfer amount under the source public key of the transfer.
+        &[],
+        
+        // &equality_proof_data,
+        ProofLocation::ContextStateAccount(&equality_proof_pubkey),
+        // &ciphertext_validity_proof_pubkey,
+        ProofLocation::ContextStateAccount(&ciphertext_validity_proof_pubkey),
+        // &range_proof_pubkey,
+        ProofLocation::ContextStateAccount(&range_proof_pubkey),
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
@@ -845,7 +878,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &recipient_associated_token_address,        // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
-        new_decryptable_available_balance, // Cipher text of the new decryptable available balance
+        new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
         &wallet_2.pubkey(),                // Token account owner
         &[&wallet_2.pubkey()],             // Additional signers
     )?;
@@ -880,109 +913,113 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Confidential Transfer extension information needed to construct a `Withdraw` instruction.
     let withdraw_account_info = WithdrawAccountInfo::new(extension_data);
 
+    // Authority for the withdraw proof account (to close the account)
+    let context_state_authority = &wallet_2;
+
+    let equality_proof_context_state_keypair = Keypair::new();
+    let equality_proof_context_state_pubkey = equality_proof_context_state_keypair.pubkey();
+    let range_proof_context_state_keypair = Keypair::new();
+    let range_proof_context_state_pubkey = range_proof_context_state_keypair.pubkey();
+    
     // Create a withdraw proof data
-    let proof_data = withdraw_account_info.generate_proof_data(
+    let WithdrawProofData {
+        equality_proof_data,
+        range_proof_data,
+    } = withdraw_account_info.generate_proof_data(
         withdraw_amount,
         &receiver_elgamal_keypair,
         &receiver_aes_key,
     )?;
 
-    // Generate address for withdraw proof account
-    let withdraw_proof_context_state_account = Keypair::new();
-    let withdraw_proof_pubkey = withdraw_proof_context_state_account.pubkey();
-    // Authority for the withdraw proof account (to close the account)
-    let context_state_authority = &wallet_2;
 
-    let space = std::mem::size_of::<ProofContextState<WithdrawProofContext>>();
-    let rent = client.get_minimum_balance_for_rent_exemption(space)?;
+    // Generate withdrawal proof accounts
+    let context_state_authority_pubkey = context_state_authority.pubkey();
+    let create_equality_proof_signer = &[&equality_proof_context_state_keypair];
+    let create_range_proof_signer = &[&range_proof_context_state_keypair];
 
-    let withdraw_proof_context_state_info = ContextStateInfo {
-        context_state_account: &withdraw_proof_pubkey,
-        context_state_authority: &context_state_authority.pubkey(),
-    };
+    match token.confidential_transfer_create_context_state_account(
+        &equality_proof_context_state_pubkey,
+        &context_state_authority_pubkey,
+        &equality_proof_data,
+        false,
+        create_equality_proof_signer
+    ).await {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+        }
+        _ => {
+            panic!("Unexpected result from create equality proof context state account");
+        }
+    }
+    match token.confidential_transfer_create_context_state_account(
+        &range_proof_context_state_pubkey,
+        &context_state_authority_pubkey,
+        &range_proof_data,
+        true,
+        create_range_proof_signer,
+    ).await {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+        }
+        _ => {
+            panic!("Unexpected result from create range proof context state account");
+        }
+    }
 
-    // Instruction to create the withdraw proof account
-    let create_withdraw_proof_account = create_account(
-        &wallet_2.pubkey(),
-        &withdraw_proof_pubkey,
-        rent,
-        space as u64,
-        &zk_token_proof_program::id(),
-    );
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &[create_withdraw_proof_account],
-        Some(&wallet_2.pubkey()),
-        &[&wallet_2, &withdraw_proof_context_state_account],
-        recent_blockhash,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nCreate Withdraw Proof Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Instruction to initialize account with proof data
-    // Sent as separate transaction because proof instruction too large
-    let verify_withdraw_proof_instruction = ProofInstruction::VerifyWithdraw
-        .encode_verify_proof(Some(withdraw_proof_context_state_info), &proof_data);
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &[verify_withdraw_proof_instruction],
-        Some(&wallet_2.pubkey()),
-        &[&wallet_2],
-        recent_blockhash,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nInitialize Withdraw Proof Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Update the decryptable available balance
-    let new_decryptable_available_balance = withdraw_account_info
-        .new_decryptable_available_balance(withdraw_amount, &receiver_aes_key)
-        .map_err(|_| TokenError::AccountDecryption)?;
-
-    // let balance = new_decryptable_available_balance.decrypt(&aes_key);
-    // print!("\nAvailable Balance: {:?}", balance);
-
-    // The proof is pre-verified into a context state account.
-    let proof_location = ProofLocation::ContextStateAccount(&withdraw_proof_pubkey);
-
-    // Create a `Withdraw` instruction
-    let withdraw_instruction = withdraw(
-        &spl_token_2022::id(),
+    // do the withdrawal
+    match token.confidential_transfer_withdraw(
         &recipient_associated_token_address,
-        &mint.pubkey(),
-        withdraw_amount,
-        decimals,
-        new_decryptable_available_balance,
         &wallet_2.pubkey(),
-        &[&wallet_2.pubkey()],
-        proof_location,
-    )?;
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &withdraw_instruction,
-        Some(&wallet_2.pubkey()),
+        Some(&ProofAccount::ContextAccount(
+            equality_proof_context_state_pubkey,
+        )),
+        Some(&ProofAccount::ContextAccount(
+            range_proof_context_state_pubkey,
+        )),
+        amount,
+        decimals,
+        Some(withdraw_account_info),
+        &receiver_elgamal_keypair,
+        &receiver_aes_key,
         &[&wallet_2],
-        recent_blockhash,
-    );
+    ).await {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("Withdraw Transaction: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+        }
+        _ => {
+            panic!("Unexpected result from withdraw");
+        }
+    }
 
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
+    // close context state account
+    let close_context_state_signer = &[&context_state_authority];
 
-    println!(
-        "\nWithdraw Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    match token.confidential_transfer_close_context_state_account(
+        &equality_proof_context_state_pubkey,
+        &recipient_associated_token_address,
+        &context_state_authority_pubkey,
+        close_context_state_signer
+    ).await {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("Close Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+        }
+        _ => {
+            panic!("Unexpected result from close equality proof context state account");
+        }
+    }
+    match token.confidential_transfer_close_context_state_account(
+        &range_proof_context_state_pubkey,
+        &recipient_associated_token_address,
+        &context_state_authority_pubkey,
+        close_context_state_signer
+    ).await {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("Close Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+        }
+        _ => {
+            panic!("Unexpected result from close range proof context state account");
+        }
+    }
 
     Ok(())
 }
