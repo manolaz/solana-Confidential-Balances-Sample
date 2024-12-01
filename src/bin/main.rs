@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
 
 
-    // 1. Create sender and recipient wallet keypairs -----------------------------------
+    // Step 1. Create sender and recipient wallet keypairs -----------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
 
@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //Hack: To await airdrop settlement. Refactor to use async/await with appropriate commitment.
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; 
     
-    // 2. Create Mint Account ----------------------------------------------------
+    // Step 2. Create Mint Account ----------------------------------------------------
 
     let mint = Keypair::new();
     let mint_authority = &wallet_1;
@@ -158,7 +158,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 3. Create Sender Token Account -------------------------------------------
+    // Step 3. Create Sender Token Account -------------------------------------------
 
     // Associated token address of the sender
     let sender_associated_token_address = get_associated_token_address_with_program_id(
@@ -248,7 +248,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 4. Mint Tokens ----------------------------------------------------------
+    // Step 4. Mint Tokens ----------------------------------------------------------
 
     // Mint 100.00 tokens
     let amount = 100_00;
@@ -277,7 +277,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 5. Deposit Tokens -------------------------------------------------------
+    // Step 5. Deposit Tokens -------------------------------------------------------
 
     // Confidential balance has separate "pending" and "available" balances
     // Must first deposit tokens from non-confidential balance to  "pending" confidential balance
@@ -311,7 +311,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 6. Apply Pending Balance -------------------------------------------------
+    // Step 6. Apply Sender's Pending Balance -------------------------------------------------
 
     // The "pending" balance must be applied to "available" balance before it can be transferred
 
@@ -380,7 +380,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 7. Create Recipient Token Account -----------------------------------------
+    // Step 7. Create Recipient Token Account -----------------------------------------
 
     // Associated token address of the recipient
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
@@ -460,7 +460,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 8. Prepare proof data ---------------------------------------------------
+    // Step 8. Transfer with ZK Proofs ---------------------------------------------------
 
     // Must first create 3 accounts to store proofs before transferring tokens
     // This must be done in a separate transactions because the proofs are too large for single transaction
@@ -542,7 +542,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Some(&auditor_elgamal_pubkey)
     )?;
 
-    // 9. Create 3 proofs ------------------------------------------------------
+    // Create 3 proofs ------------------------------------------------------
 
     // Range Proof ------------------------------------------------------------------------------
 
@@ -605,7 +605,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // 10. Transfer with Split Proofs -------------------------------------------
+    // Transfer with Split Proofs -------------------------------------------
 
     let equality_proof_context_proof_account =
         ProofAccount::ContextAccount(equality_proof_pubkey);
@@ -645,7 +645,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // 11. Close Proof Accounts --------------------------------------------------
+    // Close Proof Accounts --------------------------------------------------
 
     // Authority to close the proof accounts
     let context_state_authority_pubkey = context_state_authority.pubkey();
@@ -698,7 +698,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 12. Apply Pending Balance -------------------------------------------------
+    // Step 9. Apply Pending Balance -------------------------------------------------
 
     // The "pending" balance must be applied to "available" balance before it can be withdrawn
 
@@ -775,7 +775,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
 
-    // 13. Withdraw Tokens ------------------------------------------------------
+    // Step 10. Withdraw Tokens ------------------------------------------------------
 
     let withdraw_amount = 20_00;
 
