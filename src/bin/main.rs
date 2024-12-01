@@ -1,84 +1,68 @@
 // cargo run --bin main
-use solana_client::{
-    nonblocking::rpc_client::RpcClient as NonBlockingRpcClient, rpc_client::RpcClient,
-};
-use solana_sdk::{
-    commitment_config::CommitmentConfig,
-    instruction::Instruction,
-    native_token::LAMPORTS_PER_SOL,
-    signature::{Keypair, Signer},
-    system_instruction::create_account,
-    transaction::Transaction,
-};
-use spl_associated_token_account::{
-    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
-};
-
-use spl_token_confidential_transfer_proof_extraction::{
-    burn::BurnProofContext, mint::MintProofContext, transfer::TransferProofContext,
-    transfer_with_fee::TransferWithFeeProofContext, withdraw::WithdrawProofContext, 
-    instruction::ProofLocation,
-    instruction::ProofData
-};
-
-use spl_token_confidential_transfer_proof_generation::{
-    burn::{burn_split_proof_data, BurnProofData},
-    mint::{mint_split_proof_data, MintProofData},
-    transfer::{transfer_split_proof_data, TransferProofData},
-    transfer_with_fee::{transfer_with_fee_split_proof_data, TransferWithFeeProofData},
-    withdraw::{withdraw_proof_data, WithdrawProofData},
-};
-
-use spl_token_2022::{
-    error::TokenError,
-    extension::{
-        confidential_transfer::{
-            account_info::{
-                ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
-            },
-            instruction::{
-                apply_pending_balance, configure_account, deposit, inner_transfer, //transfer_with_split_proofs,
-                withdraw, PubkeyValidityProofData, //TransferSplitContextStateAccounts,
-            },
-            ConfidentialTransferAccount, ConfidentialTransferMint,
-        },
-        BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
+use {
+    solana_client::{
+        nonblocking::rpc_client::RpcClient as NonBlockingRpcClient,
+        rpc_client::RpcClient,
     },
-    instruction::{initialize_mint, mint_to, reallocate},
-    solana_zk_sdk::{
-        encryption::{
-            auth_encryption::AeKey,
-            elgamal::{self, ElGamalKeypair},
-            pod::elgamal::PodElGamalPubkey,
-        },
-        //zk_token_elgamal::pod::ElGamalPubkey,
-        // zk_token_proof_instruction::{
-        //     close_context_state, BatchedGroupedCiphertext2HandlesValidityProofContext,
-        //     BatchedRangeProofContext, ContextStateInfo, ProofInstruction, WithdrawProofContext,
-        // },
-        zk_elgamal_proof_program::{
-            self, 
-            proof_data::CiphertextCommitmentEqualityProofContext, 
-            proof_data::BatchedRangeProofContext,
-            //proof_data::BatchedGroupedCiphertext3HandlesValidityProofContext,
-            state::ProofContextState,
-            instruction::ProofInstruction,
-            instruction::ContextStateInfo,
-            instruction::close_context_state,
-
-        },
+    solana_sdk::{
+        commitment_config::CommitmentConfig,
+        instruction::Instruction,
+        native_token::LAMPORTS_PER_SOL,
+        signature::{Keypair, Signer},
+        system_instruction::create_account,
+        transaction::Transaction,
     },
-    state::{Account, Mint},
+    spl_associated_token_account::{
+        get_associated_token_address_with_program_id, 
+        instruction::create_associated_token_account,
+    },
+    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::TransferProofData, 
+        withdraw::WithdrawProofData,
+    },
+    spl_token_2022::{
+        error::TokenError,
+        extension::{
+            confidential_transfer::{
+                account_info::{
+                    ApplyPendingBalanceAccountInfo, 
+                    TransferAccountInfo, 
+                    WithdrawAccountInfo,
+                },
+                instruction::{
+                    apply_pending_balance, 
+                    configure_account, 
+                    deposit, 
+                    PubkeyValidityProofData,
+                },
+                ConfidentialTransferAccount, 
+                ConfidentialTransferMint,
+            },
+            BaseStateWithExtensions, 
+            ExtensionType, 
+            StateWithExtensionsOwned,
+        },
+        instruction::{initialize_mint, mint_to, reallocate},
+        solana_zk_sdk::{
+            encryption::{
+                auth_encryption::AeKey,
+                elgamal::{self, ElGamalKeypair},
+                pod::elgamal::PodElGamalPubkey,
+            },
+            zk_elgamal_proof_program::instruction::{close_context_state, ContextStateInfo},
+        },
+        state::{Account, Mint},
+    },
+    spl_token_client::{
+        client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
+        token::{ExtensionInitializationParams, ProofAccount, ProofAccountWithCiphertext, Token},
+    },
+    std::{error::Error, sync::Arc},
+    keypair_utils::get_or_create_keypair,
+    simple_logger::SimpleLogger,
+    tokio,
 };
-use spl_token_client::{
-    client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
-    token::{ExtensionInitializationParams, ProofAccount, ProofAccountWithCiphertext, Token},
-};
-use std::{error::Error, mem::size_of, sync::Arc};
-
-use keypair_utils::get_or_create_keypair;
-
-use simple_logger::SimpleLogger;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
