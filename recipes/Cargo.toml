@@ -10,3 +10,4 @@ setup_mint = { path = "../ingredients/setup_mint" }
 tokio = { version = "1", features = ["full"] } 
 setup_token_account = { path = "../ingredients/setup_token_account" }
 mint_tokens = { path = "../ingredients/mint_tokens" }
+deposit_tokens = { path = "../ingredients/deposit_tokens" }

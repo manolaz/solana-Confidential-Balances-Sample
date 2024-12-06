@@ -5,7 +5,7 @@ members = [
     "ingredients/transfer_public_mint",
     "utils",
     "recipes"
-, "ingredients/setup_mint", "ingredients/setup_token_account", "ingredients/mint_tokens"]
+, "ingredients/setup_mint", "ingredients/setup_token_account", "ingredients/mint_tokens", "ingredients/deposit_tokens"]
 
 # Workspace-wide dependencies can be specified here if needed
 [workspace.dependencies]

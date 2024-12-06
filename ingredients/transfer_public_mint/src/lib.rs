@@ -20,7 +20,7 @@ use {
                     ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
                 },
                 instruction::{
-                    apply_pending_balance, configure_account, deposit, PubkeyValidityProofData,
+                    apply_pending_balance, configure_account, PubkeyValidityProofData,
                 },
                 ConfidentialTransferAccount, ConfidentialTransferMint,
             },
@@ -60,6 +60,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 3. Setup Token Account -------------------------------------------------
     // Step 4. Mint Tokens ----------------------------------------------------------
     // Step 5. Deposit Tokens -------------------------------------------------------
+    // Step 6. Apply Sender's Pending Balance -------------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
     let client = get_rpc_client()?;
@@ -71,40 +72,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             .unwrap();
     let sender_aes_key =
         AeKey::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes()).unwrap();
-
-    // Confidential balance has separate "pending" and "available" balances
-    // Must first deposit tokens from non-confidential balance to  "pending" confidential balance
-
-    // Amount to deposit, 50.00 tokens
-    let deposit_amount = 50_00;
-
-    // Instruction to deposit from non-confidential balance to "pending" balance
-    let deposit_instruction = deposit(
-        &spl_token_2022::id(),
-        &sender_associated_token_address, // Token account
-        &mint.pubkey(),                   // Mint
-        deposit_amount,                   // Amount to deposit
-        decimals,                         // Mint decimals
-        &wallet_1.pubkey(),               // Token account owner
-        &[&wallet_1.pubkey()],            // Signers
-    )?;
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &[deposit_instruction],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
-        recent_blockhash,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nDeposit Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 6. Apply Sender's Pending Balance -------------------------------------------------
 
     // The "pending" balance must be applied to "available" balance before it can be transferred
 

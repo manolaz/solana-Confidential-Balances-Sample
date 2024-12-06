@@ -1051,6 +1051,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
+name = "deposit_tokens"
+version = "0.1.0"
+dependencies = [
+ "keypair_utils",
+ "solana-client",
+ "solana-sdk",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+ "tokio",
+]
+
+[[package]]
 name = "der-parser"
 version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3184,6 +3196,7 @@ dependencies = [
 name = "recipes"
 version = "0.1.0"
 dependencies = [
+ "deposit_tokens",
  "mint_tokens",
  "setup_mint",
  "setup_participants",
