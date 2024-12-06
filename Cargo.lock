@@ -2171,8 +2171,10 @@ name = "keypair_utils"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "serde",
  "serde_json",
  "solana-sdk",
+ "solana-zk-sdk",
 ]
 
 [[package]]
@@ -3169,6 +3171,7 @@ dependencies = [
 name = "recipes"
 version = "0.1.0"
 dependencies = [
+ "setup_mint",
  "setup_participants",
  "tokio",
  "transfer_public_mint",
@@ -3659,6 +3662,18 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
+]
+
+[[package]]
+name = "setup_mint"
+version = "0.1.0"
+dependencies = [
+ "keypair_utils",
+ "solana-client",
+ "solana-sdk",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+ "tokio",
 ]
 
 [[package]]

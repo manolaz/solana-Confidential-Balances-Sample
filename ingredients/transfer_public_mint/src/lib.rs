@@ -8,7 +8,6 @@ use {
         commitment_config::CommitmentConfig,
         instruction::Instruction,
         signature::{Keypair, Signer},
-        system_instruction::create_account,
         transaction::Transaction,
     },
     spl_associated_token_account::{
@@ -42,7 +41,7 @@ use {
             ExtensionType, 
             StateWithExtensionsOwned,
         },
-        instruction::{initialize_mint, mint_to, reallocate},
+        instruction::{mint_to, reallocate},
         solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -55,7 +54,7 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
-        token::{ExtensionInitializationParams, ProofAccount, ProofAccountWithCiphertext, Token},
+        token::{ProofAccount, ProofAccountWithCiphertext, Token},
     },
     std::{error::Error, sync::Arc},
     keypair_utils::get_or_create_keypair,
@@ -67,86 +66,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the logger with the trace level
     SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
 
-    // Step 2. Create Mint Account ----------------------------------------------------
+    // Step 3. Create Sender Token Account -------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
     let client = RpcClient::new_with_commitment(
         String::from("http://127.0.0.1:8899"),
         CommitmentConfig::confirmed(),
     );
-    let mint = Keypair::new();
-    let mint_authority = &wallet_1;
-    let freeze_authority = &wallet_1;
+    let mint = get_or_create_keypair("mint")?;
     let decimals = 2;
-
-    // Confidential Transfer Extension authority
-    // Authority to modify the `ConfidentialTransferMint` configuration and to approve new accounts (if `auto_approve_new_accounts` is false?)
-    let authority = &wallet_1;
-
-    // Auditor ElGamal pubkey
-    // Authority to decrypt any encrypted amounts for the mint
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-
-    // ConfidentialTransferMint extension parameters
-    let confidential_transfer_mint_extension =
-        ExtensionInitializationParams::ConfidentialTransferMint {
-            authority: Some(authority.pubkey()),
-            auto_approve_new_accounts: true, // If `true`, no approval is required and new accounts may be used immediately
-            auditor_elgamal_pubkey: Some((*auditor_elgamal_keypair.pubkey()).into()),
-        };
-
-    // Calculate the space required for the mint account with the extension
-    let space = ExtensionType::try_calculate_account_len::<Mint>(&[
-        ExtensionType::ConfidentialTransferMint,
-    ])?;
-
-    // Calculate the lamports required for the mint account
-    let rent = client.get_minimum_balance_for_rent_exemption(space)?;
-
-    // Instructions to create the mint account
-    let create_account_instruction = create_account(
-        &wallet_1.pubkey(),
-        &mint.pubkey(),
-        rent,
-        space as u64,
-        &spl_token_2022::id(),
-    );
-
-    // ConfidentialTransferMint extension instruction
-    let extension_instruction =
-        confidential_transfer_mint_extension.instruction(&spl_token_2022::id(), &mint.pubkey())?;
-
-    // Initialize the mint account
-    let initialize_mint_instruction = initialize_mint(
-        &spl_token_2022::id(),
-        &mint.pubkey(),
-        &mint_authority.pubkey(),
-        Some(&freeze_authority.pubkey()),
-        decimals,
-    )?;
-
-    let instructions = vec![
-        create_account_instruction,
-        extension_instruction,
-        initialize_mint_instruction,
-    ];
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &instructions,
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1, &mint as &dyn Signer],
-        recent_blockhash,
-    );
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nCreate Mint Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 3. Create Sender Token Account -------------------------------------------
-
     // Associated token address of the sender
     let sender_associated_token_address = get_associated_token_address_with_program_id(
         &wallet_1.pubkey(), // Token account owner
