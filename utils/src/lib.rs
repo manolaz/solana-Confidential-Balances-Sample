@@ -106,4 +106,3 @@ pub fn get_non_blocking_rpc_client() -> Result<NonBlockingRpcClient, Box<dyn Err
     );
     Ok(client)
 }
-

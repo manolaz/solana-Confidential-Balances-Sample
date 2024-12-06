@@ -8,6 +8,8 @@ mod recipe {
     use setup_token_account;
     use mint_tokens;
     use deposit_tokens;
+    use apply_pending_balance;
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn basic_transfer_recipe() -> Result<(), Box<dyn Error>> {
         // Recipe: demonstrates a basic transfer flow
@@ -16,6 +18,7 @@ mod recipe {
         setup_token_account::setup_token_account().await?;
         mint_tokens::mint_tokens().await?;
         deposit_tokens::deposit_tokens().await?;
+        apply_pending_balance::apply_pending_balance().await?;
         transfer_public_mint::main().await?;
         Ok(())
     }

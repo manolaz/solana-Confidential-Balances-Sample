@@ -141,6 +141,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1fd03a028ef38ba2276dce7e33fcd6369c158a1bca17946c4b1b701891c1ff7"
 
 [[package]]
+name = "apply_pending_balance"
+version = "0.1.0"
+dependencies = [
+ "keypair_utils",
+ "solana-client",
+ "solana-sdk",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+ "spl-token-confidential-transfer-proof-generation",
+ "tokio",
+]
+
+[[package]]
 name = "aquamarine"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2188,6 +2201,7 @@ dependencies = [
  "solana-client",
  "solana-sdk",
  "solana-zk-sdk",
+ "spl-token-client",
 ]
 
 [[package]]
@@ -3196,6 +3210,7 @@ dependencies = [
 name = "recipes"
 version = "0.1.0"
 dependencies = [
+ "apply_pending_balance",
  "deposit_tokens",
  "mint_tokens",
  "setup_mint",
