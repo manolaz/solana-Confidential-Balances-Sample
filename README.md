@@ -1,3 +1,60 @@
+# Confidential Transfers Cookbook
+
+A collection of ingredients (tests) and recipes (test sequences) demonstrating Solana transfer patterns.
+
+## Test Commands
+
+### Running Individual Ingredients
+
+```bash
+# Run all tests in an ingredient
+cargo test -p setup_participants
+
+# Run a specific test from an ingredient
+cargo test -p setup_participants setup_basic_participants
+```
+
+### Running Recipes (Test Sequences)
+
+```bash
+# Run all recipes
+cargo test -p test-runner
+
+# Run a specific recipe
+cargo test -p test-runner recipe::basic_transfer_recipe
+```
+
+### Test Output Options
+
+```bash
+# Show output from successful tests
+cargo test -- --nocapture
+
+# Show test execution time
+cargo test -- --show-output
+
+# Run tests in single thread (default is parallel)
+cargo test -- --test-threads=1
+```
+
+## Project Structure
+
+```
+.
+├── ingredients/           # Individual test modules
+│   └── setup_participants/
+├── recipes/              # Complex flows combining ingredients
+│   └── transfer_public_mint/
+├── test-runner/         # Test sequencer for recipes
+└── utils/              # Shared utilities
+```
+
+Each ingredient is a standalone test demonstrating a specific Solana functionality.
+Recipes combine these ingredients in specific sequences to demonstrate more complex flows. 
+
+
+
+
 # Confidential Transfer Example
 This is an isolated basic example of the confidential transfer flow found in [Token Program CLI](https://github.com/solana-labs/solana-program-library/tree/master/token/cli).
 Use this as a guide to implement confidential transfer in your own applications.

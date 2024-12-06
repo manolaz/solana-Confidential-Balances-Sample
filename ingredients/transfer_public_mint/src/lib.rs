@@ -64,8 +64,7 @@ use {
     tokio,
 };
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+pub async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the logger with the trace level
     SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
 
@@ -905,4 +904,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_main() -> Result<(), Box<dyn Error>> {
+    main().await
 }

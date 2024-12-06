@@ -1,0 +1,9 @@
+[package]
+name = "recipes"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+setup_participants = { path = "../ingredients/setup_participants" }
+transfer_public_mint = { path = "../ingredients/transfer_public_mint" }
+tokio = { version = "1", features = ["full"] } 
