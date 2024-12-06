@@ -1,3 +1,7 @@
+# Open Questions
+- How does a new global auditor decrypt confidential transfers from prior global auditor's key?
+  - We should define expectations for auditor transference.
+
 # Confidential Transfers Cookbook
 
 A collection of ingredients (tests) and recipes (test sequences) demonstrating Solana transfer patterns.
