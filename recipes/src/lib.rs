@@ -40,7 +40,11 @@ mod recipe {
         // Step 6. Apply pending balance
         apply_pending_balance::apply_pending_balance(&sender_keypair).await?;
         
-        // Step 7. Transfer tokens
+        // Step 7. Create recipient token account
+        setup_token_account::setup_token_account(&recipient_keypair).await?;
+
+
+        // Step X. Transfer tokens
         transfer_public_mint::main().await?;
 
         // signature = load_value("last_confidential_transfer_signature")

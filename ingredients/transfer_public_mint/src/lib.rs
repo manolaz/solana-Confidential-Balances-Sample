@@ -9,9 +9,9 @@ use {
         signature::{Keypair, Signer},
         transaction::Transaction,
     },
-    spl_associated_token_account::{
-        get_associated_token_address_with_program_id, instruction::create_associated_token_account,
-    },
+    spl_associated_token_account::
+        get_associated_token_address_with_program_id
+    ,
     spl_token_2022::{
         error::TokenError,
         extension::{
@@ -19,14 +19,13 @@ use {
                 account_info::{
                     ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
                 },
-                instruction::{
-                    apply_pending_balance, configure_account, PubkeyValidityProofData,
-                },
+                instruction::
+                    apply_pending_balance
+                ,
                 ConfidentialTransferAccount, ConfidentialTransferMint,
             },
-            BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
+            BaseStateWithExtensions, StateWithExtensionsOwned,
         },
-        instruction::reallocate,
         solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -41,7 +40,6 @@ use {
         client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ProofAccount, ProofAccountWithCiphertext, Token},
     },
-    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
     spl_token_confidential_transfer_proof_generation::{
         transfer::TransferProofData, withdraw::WithdrawProofData,
     },
@@ -62,6 +60,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 5. Deposit Tokens -------------------------------------------------------
     // Step 6. Apply Sender's Pending Balance -------------------------------------------------
     // Step 7. Create Recipient Token Account -----------------------------------------
+    // Step 8. Transfer with ZK Proofs ---------------------------------------------------
     let sender_keypair = Arc::new(get_or_create_keypair("sender_keypair")?);
     let recipient_keypair = Arc::new(get_or_create_keypair("recipient_keypair")?);
     let client = get_rpc_client()?;
@@ -69,102 +68,27 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
     let decimals = load_value("decimals")?;
 
-    // Create a "token" client, to use various helper functions for Token Extensions
-    let rpc_client = get_non_blocking_rpc_client()?;
+    let token = {
+        let rpc_client = get_non_blocking_rpc_client()?;
 
-    let program_client =
-        ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
+        let program_client =
+            ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
 
-    let token = Token::new(
-        Arc::new(program_client),
-        &spl_token_2022::id(),
-        &mint.pubkey(),
-        Some(decimals),
-        sender_keypair.clone(),
-    );
+        // Create a "token" client, to use various helper functions for Token Extensions
+        Token::new(
+            Arc::new(program_client),
+            &spl_token_2022::id(),
+            &mint.pubkey(),
+            Some(decimals),
+            sender_keypair.clone(),
+        )
+    };
 
-    // Associated token address of the recipient
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
-        &recipient_keypair.pubkey(), // Token account owner
-        &mint.pubkey(),     // Mint
-        &spl_token_2022::id(),
-    );
-
-    // Instruction to create associated token account
-    let create_associated_token_account_instruction = create_associated_token_account(
-        &recipient_keypair.pubkey(), // Funding account
-        &recipient_keypair.pubkey(), // Token account owner
-        &mint.pubkey(),     // Mint
-        &spl_token_2022::id(),
-    );
-
-    // Instruction to reallocate the token account to include the `ConfidentialTransferAccount` extension
-    let reallocate_instruction = reallocate(
-        &spl_token_2022::id(),
-        &recipient_associated_token_address,
-        &recipient_keypair.pubkey(),    // payer
-        &recipient_keypair.pubkey(),    // owner
-        &[&recipient_keypair.pubkey()], // signers
-        &[ExtensionType::ConfidentialTransferAccount],
-    )?;
-
-    // Create the ElGamal keypair and AES key for the recipient token account
-    let sender_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes())
-            .unwrap();
-    let sender_aes_key =
-        AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
-
-    let maximum_pending_balance_credit_counter = 65536; // Default value or custom
-    let decryptable_balance = sender_aes_key.encrypt(0);
-
-    // Create proof data for Pubkey Validity
-    let proof_data = PubkeyValidityProofData::new(&sender_elgamal_keypair)
-        .map_err(|_| TokenError::ProofGeneration)?;
-
-    // The proof is included in the same transaction of a corresponding token-2022 instruction
-    // Appends the proof instruction right after the `ConfigureAccount` instruction.
-    // This means that the proof instruction offset must be always be 1.
-    let proof_location = ProofLocation::InstructionOffset(
-        1.try_into().unwrap(),
-        ProofData::InstructionData(&proof_data),
-    );
-
-    // Configure account with the proof
-    let configure_account_instruction = configure_account(
-        &spl_token_2022::id(),
-        &recipient_associated_token_address,
-        &mint.pubkey(),
-        decryptable_balance.into(),
-        maximum_pending_balance_credit_counter,
         &recipient_keypair.pubkey(),
-        &[],
-        proof_location,
-    )
-    .unwrap();
-
-    let mut instructions = vec![
-        create_associated_token_account_instruction,
-        reallocate_instruction,
-    ];
-    instructions.extend(configure_account_instruction);
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &instructions,
-        Some(&recipient_keypair.pubkey()),
-        &[&recipient_keypair],
-        recent_blockhash,
+        &mint.pubkey(),
+        &spl_token_2022::id(),
     );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nCreate Recipient Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 8. Transfer with ZK Proofs ---------------------------------------------------
 
     // Must first create 3 accounts to store proofs before transferring tokens
     // This must be done in a separate transactions because the proofs are too large for single transaction
