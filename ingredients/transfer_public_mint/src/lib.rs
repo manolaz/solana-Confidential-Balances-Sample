@@ -1,25 +1,14 @@
 // cargo run --bin main
 use {
-    solana_client::{
-        nonblocking::rpc_client::RpcClient as NonBlockingRpcClient,
-        rpc_client::RpcClient,
-    },
-    solana_sdk::{
+    keypair_utils::{get_or_create_keypair, get_rpc_client, load_value}, simple_logger::SimpleLogger, solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient, solana_sdk::{
         commitment_config::CommitmentConfig,
         instruction::Instruction,
         signature::{Keypair, Signer},
         transaction::Transaction,
-    },
-    spl_associated_token_account::{
+    }, spl_associated_token_account::{
         get_associated_token_address_with_program_id, 
         instruction::create_associated_token_account,
-    },
-    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
-    spl_token_confidential_transfer_proof_generation::{
-        transfer::TransferProofData, 
-        withdraw::WithdrawProofData,
-    },
-    spl_token_2022::{
+    }, spl_token_2022::{
         error::TokenError,
         extension::{
             confidential_transfer::{
@@ -51,14 +40,13 @@ use {
             zk_elgamal_proof_program::instruction::{close_context_state, ContextStateInfo},
         },
         state::{Account, Mint},
-    },
-    spl_token_client::{
+    }, spl_token_client::{
         client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ProofAccount, ProofAccountWithCiphertext, Token},
-    },
-    std::{error::Error, sync::Arc},
-    keypair_utils::get_or_create_keypair,
-    simple_logger::SimpleLogger,
+    }, spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation}, spl_token_confidential_transfer_proof_generation::{
+        transfer::TransferProofData, 
+        withdraw::WithdrawProofData,
+    }, std::{error::Error, sync::Arc}
 };
 
 pub async fn main() -> Result<(), Box<dyn Error>> {
@@ -69,12 +57,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 3. Create Sender Token Account -------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
-    let client = RpcClient::new_with_commitment(
-        String::from("http://127.0.0.1:8899"),
-        CommitmentConfig::confirmed(),
-    );
+    let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let decimals = 2;
+    let decimals = load_value("decimals")?;
+    
     // Associated token address of the sender
     let sender_associated_token_address = get_associated_token_address_with_program_id(
         &wallet_1.pubkey(), // Token account owner

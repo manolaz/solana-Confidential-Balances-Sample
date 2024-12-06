@@ -1,3 +1,6 @@
+use solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient;
+use solana_client::rpc_client::RpcClient;
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signer::keypair::Keypair;
 use solana_zk_sdk::encryption::elgamal::{ElGamalKeypair, ElGamalSecretKey};
 use std::env;
@@ -6,6 +9,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 const ENV_FILE_PATH: &str = "../.env";
+const RPC_URL: &str = "http://127.0.0.1:8899";
 
 // Get or create a keypair from an .env file
 pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Error>> {
@@ -85,5 +89,21 @@ pub fn load_value<T: serde::de::DeserializeOwned>(variable_name: &str) -> Result
     let value = serde_json::from_str(&json_value)?;
 
     Ok(value)
+}
+
+pub fn get_rpc_client() -> Result<RpcClient, Box<dyn Error>> {
+    let client = RpcClient::new_with_commitment(
+        String::from(RPC_URL),
+        CommitmentConfig::confirmed(),
+    );
+    Ok(client)
+}
+
+pub fn get_non_blocking_rpc_client() -> Result<NonBlockingRpcClient, Box<dyn Error>> {
+    let client = NonBlockingRpcClient::new_with_commitment(
+        String::from(RPC_URL),
+        CommitmentConfig::confirmed(),
+    );
+    Ok(client)
 }
 

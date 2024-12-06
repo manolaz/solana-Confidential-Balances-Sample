@@ -1,16 +1,12 @@
 use {
-    keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, record_value}, solana_client::rpc_client::RpcClient, solana_sdk::{
-        commitment_config::CommitmentConfig,
+    keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, get_rpc_client, record_value}, solana_sdk::{
         signer::Signer, system_instruction::create_account, transaction::Transaction,
-    }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, solana_zk_sdk::encryption::elgamal::ElGamalKeypair, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
+    }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
 };
 
 pub async fn create_mint() -> Result<(), Box<dyn Error>> {
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
-    let client = RpcClient::new_with_commitment(
-        String::from("http://127.0.0.1:8899"),
-        CommitmentConfig::confirmed(),
-    );
+    let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let mint_authority = &wallet_1;
     let freeze_authority = &wallet_1;

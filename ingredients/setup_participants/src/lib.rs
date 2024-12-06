@@ -1,8 +1,7 @@
 use {
-    keypair_utils::get_or_create_keypair,
-    solana_client::rpc_client::RpcClient,
+    keypair_utils::{get_or_create_keypair, get_rpc_client},
     solana_sdk::{
-        commitment_config::CommitmentConfig, native_token::LAMPORTS_PER_SOL, signer::Signer,
+        native_token::LAMPORTS_PER_SOL, signer::Signer,
     },
     std::{error::Error, sync::Arc},
     tokio,
@@ -15,10 +14,7 @@ pub async fn setup_basic_participants() -> Result<(), Box<dyn Error>> {
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
 
-    let client = RpcClient::new_with_commitment(
-        String::from("http://127.0.0.1:8899"),
-        CommitmentConfig::confirmed(),
-    );
+    let client = get_rpc_client()?;
 
     client.request_airdrop(&wallet_1.pubkey(), LAMPORTS_PER_SOL)?;
     client.request_airdrop(&wallet_2.pubkey(), LAMPORTS_PER_SOL)?;
