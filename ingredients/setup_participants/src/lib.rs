@@ -4,7 +4,6 @@ use {
         native_token::LAMPORTS_PER_SOL, signer::Signer,
     },
     std::{error::Error, sync::Arc},
-    tokio,
 };
 
 pub async fn setup_basic_participants() -> Result<(), Box<dyn Error>> {

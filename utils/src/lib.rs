@@ -47,7 +47,7 @@ pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypa
             let decoded_secret_key: Vec<u8> = serde_json::from_str(&secret_key_string)?;
             Ok(ElGamalKeypair::new(ElGamalSecretKey::from_seed(&decoded_secret_key)?))
         }
-        _ => {
+        Err(_) => {
             let keypair = ElGamalKeypair::new_rand();
             
             // Convert secret key to Vec<u8> and then to JSON, append to .env file

@@ -1,34 +1,31 @@
 // cargo run --bin main
 use {
-    keypair_utils::{get_or_create_keypair, get_rpc_client, load_value}, simple_logger::SimpleLogger, solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient, solana_sdk::{
+    keypair_utils::{get_or_create_keypair, get_rpc_client, load_value},
+    simple_logger::SimpleLogger,
+    solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient,
+    solana_sdk::{
         commitment_config::CommitmentConfig,
         instruction::Instruction,
+        pubkey::Pubkey,
         signature::{Keypair, Signer},
         transaction::Transaction,
-    }, spl_associated_token_account::{
-        get_associated_token_address_with_program_id, 
-        instruction::create_associated_token_account,
-    }, spl_token_2022::{
+    },
+    spl_associated_token_account::{
+        get_associated_token_address_with_program_id, instruction::create_associated_token_account,
+    },
+    spl_token_2022::{
         error::TokenError,
         extension::{
             confidential_transfer::{
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, 
-                    TransferAccountInfo, 
-                    WithdrawAccountInfo,
+                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
                 },
                 instruction::{
-                    apply_pending_balance, 
-                    configure_account, 
-                    deposit, 
-                    PubkeyValidityProofData,
+                    apply_pending_balance, configure_account, deposit, PubkeyValidityProofData,
                 },
-                ConfidentialTransferAccount, 
-                ConfidentialTransferMint,
+                ConfidentialTransferAccount, ConfidentialTransferMint,
             },
-            BaseStateWithExtensions, 
-            ExtensionType, 
-            StateWithExtensionsOwned,
+            BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
         instruction::{mint_to, reallocate},
         solana_zk_sdk::{
@@ -40,116 +37,40 @@ use {
             zk_elgamal_proof_program::instruction::{close_context_state, ContextStateInfo},
         },
         state::{Account, Mint},
-    }, spl_token_client::{
+    },
+    spl_token_client::{
         client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ProofAccount, ProofAccountWithCiphertext, Token},
-    }, spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation}, spl_token_confidential_transfer_proof_generation::{
-        transfer::TransferProofData, 
-        withdraw::WithdrawProofData,
-    }, std::{error::Error, sync::Arc}
+    },
+    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::TransferProofData, withdraw::WithdrawProofData,
+    },
+    std::{error::Error, sync::Arc},
 };
 
 pub async fn main() -> Result<(), Box<dyn Error>> {
-
     // Initialize the logger with the trace level
-    SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
+    SimpleLogger::new()
+        .with_level(log::LevelFilter::Error)
+        .init()
+        .unwrap();
 
-    // Step 3. Create Sender Token Account -------------------------------------------
+    // Step 1. Setup Participants -------------------------------------------------
+    // Step 2. Setup Mint -------------------------------------------------
+    // Step 3. Setup Token Account -------------------------------------------------
+    // Step 4. Mint Tokens ----------------------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let decimals = load_value("decimals")?;
-    
-    // Associated token address of the sender
-    let sender_associated_token_address = get_associated_token_address_with_program_id(
-        &wallet_1.pubkey(), // Token account owner
-        &mint.pubkey(),     // Mint
-        &spl_token_2022::id(),
-    );
-
-    // Instruction to create associated token account
-    let create_associated_token_account_instruction = create_associated_token_account(
-        &wallet_1.pubkey(), // Funding account
-        &wallet_1.pubkey(), // Token account owner
-        &mint.pubkey(),     // Mint
-        &spl_token_2022::id(),
-    );
-
-    // Instruction to reallocate the token account to include the `ConfidentialTransferAccount` extension
-    let reallocate_instruction = reallocate(
-        &spl_token_2022::id(),
-        &sender_associated_token_address, // Token account
-        &wallet_1.pubkey(),               // Payer
-        &wallet_1.pubkey(),               // Token account owner
-        &[&wallet_1.pubkey()],            // Signers
-        &[ExtensionType::ConfidentialTransferAccount], // Extension to reallocate space for
-    )?;
-
-    // Create the ElGamal keypair and AES key for the sender token account
-    let elgamal_keypair =
+    let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
+    let sender_elgamal_keypair =
         ElGamalKeypair::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes())
             .unwrap();
-    let aes_key =
+    let sender_aes_key =
         AeKey::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes()).unwrap();
-
-    // The maximum number of `Deposit` and `Transfer` instructions that can
-    // credit `pending_balance` before the `ApplyPendingBalance` instruction is executed
-    let maximum_pending_balance_credit_counter = 65536;
-
-    // Initial token balance is 0
-    let decryptable_balance = aes_key.encrypt(0);
-
-    // The instruction data that is needed for the `ProofInstruction::VerifyPubkeyValidity` instruction.
-    // It includes the cryptographic proof as well as the context data information needed to verify the proof.
-    // Generating the proof data client-side (instead of using a separate proof account)
-    let proof_data =
-        PubkeyValidityProofData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
-
-    // `InstructionOffset` indicates that proof is included in the same transaction
-    // This means that the proof instruction offset must be always be 1.
-    let proof_location = ProofLocation::InstructionOffset(
-        1.try_into().unwrap(), 
-        ProofData::InstructionData(&proof_data)
-    );
-
-    // Instructions to configure the token account, including the proof instruction
-    // Appends the `VerifyPubkeyValidityProof` instruction right after the `ConfigureAccount` instruction.
-    let configure_account_instruction = configure_account(
-        &spl_token_2022::id(),                  // Program ID
-        &&sender_associated_token_address,      // Token account
-        &mint.pubkey(),                         // Mint
-        decryptable_balance.into(),                    // Initial balance
-        maximum_pending_balance_credit_counter, // Maximum pending balance credit counter
-        &wallet_1.pubkey(),                     // Token Account Owner
-        &[],                                    // Additional signers
-        proof_location,                         // Proof location
-    )
-    .unwrap();
-
-    // Instructions to configure account must come after `initialize_account` instruction
-    let mut instructions = vec![
-        create_associated_token_account_instruction,
-        reallocate_instruction,
-    ];
-    instructions.extend(configure_account_instruction);
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &instructions,
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
-        recent_blockhash,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nCreate Sender Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 4. Mint Tokens ----------------------------------------------------------
 
     // Mint 100.00 tokens
     let amount = 100_00;
@@ -168,7 +89,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &[mint_to_instruction],
         Some(&wallet_1.pubkey()),
         &[&wallet_1],
-        recent_blockhash,
+        client.get_latest_blockhash()?,
     );
 
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
@@ -253,17 +174,17 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     // Update the decryptable available balance (add pending balance to available balance)
     let new_decryptable_available_balance = apply_pending_balance_account_info
-        .new_decryptable_available_balance(&elgamal_keypair.secret(), &aes_key)
+        .new_decryptable_available_balance(&sender_elgamal_keypair.secret(), &sender_aes_key)
         .map_err(|_| TokenError::AccountDecryption)?;
 
     // Create a `ApplyPendingBalance` instruction
     let apply_pending_balance_instruction = apply_pending_balance(
         &spl_token_2022::id(),
-        &sender_associated_token_address,        // Token account
+        &sender_associated_token_address,         // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
         new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &wallet_1.pubkey(),                // Token account owner
-        &[&wallet_1.pubkey()],             // Additional signers
+        &wallet_1.pubkey(),                       // Token account owner
+        &[&wallet_1.pubkey()],                    // Additional signers
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
@@ -309,23 +230,26 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     // Create the ElGamal keypair and AES key for the recipient token account
-    let elgamal_keypair =
+    let sender_elgamal_keypair =
         ElGamalKeypair::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
             .unwrap();
-    let aes_key =
+    let sender_aes_key =
         AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes()).unwrap();
 
     let maximum_pending_balance_credit_counter = 65536; // Default value or custom
-    let decryptable_balance = aes_key.encrypt(0);
+    let decryptable_balance = sender_aes_key.encrypt(0);
 
     // Create proof data for Pubkey Validity
-    let proof_data =
-        PubkeyValidityProofData::new(&elgamal_keypair).map_err(|_| TokenError::ProofGeneration)?;
+    let proof_data = PubkeyValidityProofData::new(&sender_elgamal_keypair)
+        .map_err(|_| TokenError::ProofGeneration)?;
 
     // The proof is included in the same transaction of a corresponding token-2022 instruction
     // Appends the proof instruction right after the `ConfigureAccount` instruction.
     // This means that the proof instruction offset must be always be 1.
-    let proof_location = ProofLocation::InstructionOffset(1.try_into().unwrap(), ProofData::InstructionData(&proof_data));
+    let proof_location = ProofLocation::InstructionOffset(
+        1.try_into().unwrap(),
+        ProofData::InstructionData(&proof_data),
+    );
 
     // Configure account with the proof
     let configure_account_instruction = configure_account(
@@ -390,7 +314,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .get_account_info(&sender_associated_token_address)
         .await?;
 
-    let sender_account_extension_data = sender_token_account_info.get_extension::<ConfidentialTransferAccount>()?;
+    let sender_account_extension_data =
+        sender_token_account_info.get_extension::<ConfidentialTransferAccount>()?;
 
     // ConfidentialTransferAccount extension information needed to create proof data
     let sender_transfer_account_info = TransferAccountInfo::new(sender_account_extension_data);
@@ -429,7 +354,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .ok_or("No Auditor ElGamal pubkey")?
         .try_into()?;
 
-
     // Generate proof data
     let TransferProofData {
         equality_proof_data,
@@ -440,7 +364,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &sender_elgamal_keypair,
         &sender_aes_key,
         &recipient_elgamal_pubkey,
-        Some(&auditor_elgamal_pubkey)
+        Some(&auditor_elgamal_pubkey),
     )?;
 
     // Create 3 proofs ------------------------------------------------------
@@ -457,30 +381,37 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             true, // Sent as separate transactions because proof instruction is too large.
             &[&range_proof_context_state_account],
         )
-        .await {
-            Ok(RpcClientResponse::Signature(signature)) => {
-                println!("\nCreate Range Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
-            }
-            Ok(RpcClientResponse::Transaction(_)) => {
-                panic!("Unexpected result from create range proof context state account.");
-            }
-            Ok(RpcClientResponse::Simulation(_)) => {
-                panic!("Unexpected result from create range proof context state account.");
-            }
-            Err(e) => {
-                panic!("Unexpected result from create range proof context state account: {:?}", e);
-            }
+        .await
+    {
+        Ok(RpcClientResponse::Signature(signature)) => {
+            println!("\nCreate Range Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
+        Ok(RpcClientResponse::Transaction(_)) => {
+            panic!("Unexpected result from create range proof context state account.");
+        }
+        Ok(RpcClientResponse::Simulation(_)) => {
+            panic!("Unexpected result from create range proof context state account.");
+        }
+        Err(e) => {
+            panic!(
+                "Unexpected result from create range proof context state account: {:?}",
+                e
+            );
+        }
+    }
 
     // Equality Proof ---------------------------------------------------------------------------
 
-    match token.confidential_transfer_create_context_state_account(
-        &equality_proof_pubkey,
-        &context_state_authority.pubkey(),
-        &equality_proof_data,
-        false,
-        &[&equality_proof_context_state_account],
-    ).await {
+    match token
+        .confidential_transfer_create_context_state_account(
+            &equality_proof_pubkey,
+            &context_state_authority.pubkey(),
+            &equality_proof_data,
+            false,
+            &[&equality_proof_context_state_account],
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("\nCreate Equality Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -491,13 +422,16 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     // Ciphertext Validity Proof ----------------------------------------------------------------
 
-    match token.confidential_transfer_create_context_state_account(
-        &ciphertext_validity_proof_pubkey,
-        &context_state_authority.pubkey(),
-        &ciphertext_validity_proof_data_with_ciphertext.proof_data,
-        false,
-        &[&ciphertext_validity_proof_context_state_account],
-    ).await {
+    match token
+        .confidential_transfer_create_context_state_account(
+            &ciphertext_validity_proof_pubkey,
+            &context_state_authority.pubkey(),
+            &ciphertext_validity_proof_data_with_ciphertext.proof_data,
+            false,
+            &[&ciphertext_validity_proof_context_state_account],
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("\nCreate Ciphertext Validity Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -508,12 +442,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     // Transfer with Split Proofs -------------------------------------------
 
-    let equality_proof_context_proof_account =
-        ProofAccount::ContextAccount(equality_proof_pubkey);
+    let equality_proof_context_proof_account = ProofAccount::ContextAccount(equality_proof_pubkey);
     let ciphertext_validity_proof_context_proof_account =
         ProofAccount::ContextAccount(ciphertext_validity_proof_pubkey);
-    let range_proof_context_proof_account =
-        ProofAccount::ContextAccount(range_proof_pubkey);
+    let range_proof_context_proof_account = ProofAccount::ContextAccount(range_proof_pubkey);
 
     let ciphertext_validity_proof_account_with_ciphertext = ProofAccountWithCiphertext {
         proof_account: ciphertext_validity_proof_context_proof_account,
@@ -522,22 +454,23 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     match token
-    .confidential_transfer_transfer(
-        &sender_associated_token_address,
-        &recipient_associated_token_address,
-        &wallet_1.pubkey(),
-        Some(&equality_proof_context_proof_account),
-        Some(&ciphertext_validity_proof_account_with_ciphertext),
-        Some(&range_proof_context_proof_account),
-        transfer_amount,
-        Some(sender_transfer_account_info),
-        &sender_elgamal_keypair,
-        &sender_aes_key,
-        &recipient_elgamal_pubkey,
-        Some(&auditor_elgamal_pubkey),
-        &[&wallet_1],
-    )
-    .await {
+        .confidential_transfer_transfer(
+            &sender_associated_token_address,
+            &recipient_associated_token_address,
+            &wallet_1.pubkey(),
+            Some(&equality_proof_context_proof_account),
+            Some(&ciphertext_validity_proof_account_with_ciphertext),
+            Some(&range_proof_context_proof_account),
+            transfer_amount,
+            Some(sender_transfer_account_info),
+            &sender_elgamal_keypair,
+            &sender_aes_key,
+            &recipient_elgamal_pubkey,
+            Some(&auditor_elgamal_pubkey),
+            &[&wallet_1],
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("\nTransfer with Split Proofs: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -643,8 +576,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         ElGamalKeypair::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
             .unwrap();
     let receiver_aes_key =
-        AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
-            .unwrap();
+        AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes()).unwrap();
 
     // Update the decryptable available balance (add pending balance to available balance)
     let new_decryptable_available_balance = apply_pending_balance_account_info
@@ -654,11 +586,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Create a `ApplyPendingBalance` instruction
     let apply_pending_balance_instruction = apply_pending_balance(
         &spl_token_2022::id(),
-        &recipient_associated_token_address,        // Token account
+        &recipient_associated_token_address,      // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
         new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &wallet_2.pubkey(),                // Token account owner
-        &[&wallet_2.pubkey()],             // Additional signers
+        &wallet_2.pubkey(),                       // Token account owner
+        &[&wallet_2.pubkey()],                    // Additional signers
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
@@ -698,7 +630,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let equality_proof_context_state_pubkey = equality_proof_context_state_keypair.pubkey();
     let range_proof_context_state_keypair = Keypair::new();
     let range_proof_context_state_pubkey = range_proof_context_state_keypair.pubkey();
-    
+
     // Create a withdraw proof data
     let WithdrawProofData {
         equality_proof_data,
@@ -709,19 +641,21 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &receiver_aes_key,
     )?;
 
-
     // Generate withdrawal proof accounts
     let context_state_authority_pubkey = context_state_authority.pubkey();
     let create_equality_proof_signer = &[&equality_proof_context_state_keypair];
     let create_range_proof_signer = &[&range_proof_context_state_keypair];
 
-    match token.confidential_transfer_create_context_state_account(
-        &equality_proof_context_state_pubkey,
-        &context_state_authority_pubkey,
-        &equality_proof_data,
-        false,
-        create_equality_proof_signer
-    ).await {
+    match token
+        .confidential_transfer_create_context_state_account(
+            &equality_proof_context_state_pubkey,
+            &context_state_authority_pubkey,
+            &equality_proof_data,
+            false,
+            create_equality_proof_signer,
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -729,13 +663,16 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             panic!("Unexpected result from create equality proof context state account");
         }
     }
-    match token.confidential_transfer_create_context_state_account(
-        &range_proof_context_state_pubkey,
-        &context_state_authority_pubkey,
-        &range_proof_data,
-        true,
-        create_range_proof_signer,
-    ).await {
+    match token
+        .confidential_transfer_create_context_state_account(
+            &range_proof_context_state_pubkey,
+            &context_state_authority_pubkey,
+            &range_proof_data,
+            true,
+            create_range_proof_signer,
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -745,22 +682,25 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // do the withdrawal
-    match token.confidential_transfer_withdraw(
-        &recipient_associated_token_address,
-        &wallet_2.pubkey(),
-        Some(&ProofAccount::ContextAccount(
-            equality_proof_context_state_pubkey,
-        )),
-        Some(&ProofAccount::ContextAccount(
-            range_proof_context_state_pubkey,
-        )),
-        withdraw_amount,
-        decimals,
-        Some(withdraw_account_info),
-        &receiver_elgamal_keypair,
-        &receiver_aes_key,
-        &[&wallet_2],
-    ).await {
+    match token
+        .confidential_transfer_withdraw(
+            &recipient_associated_token_address,
+            &wallet_2.pubkey(),
+            Some(&ProofAccount::ContextAccount(
+                equality_proof_context_state_pubkey,
+            )),
+            Some(&ProofAccount::ContextAccount(
+                range_proof_context_state_pubkey,
+            )),
+            withdraw_amount,
+            decimals,
+            Some(withdraw_account_info),
+            &receiver_elgamal_keypair,
+            &receiver_aes_key,
+            &[&wallet_2],
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("Withdraw Transaction: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -778,12 +718,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // close context state account
     let close_context_state_signer = &[&context_state_authority];
 
-    match token.confidential_transfer_close_context_state_account(
-        &equality_proof_context_state_pubkey,
-        &recipient_associated_token_address,
-        &context_state_authority_pubkey,
-        close_context_state_signer
-    ).await {
+    match token
+        .confidential_transfer_close_context_state_account(
+            &equality_proof_context_state_pubkey,
+            &recipient_associated_token_address,
+            &context_state_authority_pubkey,
+            close_context_state_signer,
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("Close Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
@@ -791,12 +734,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             panic!("Unexpected result from close equality proof context state account");
         }
     }
-    match token.confidential_transfer_close_context_state_account(
-        &range_proof_context_state_pubkey,
-        &recipient_associated_token_address,
-        &context_state_authority_pubkey,
-        close_context_state_signer
-    ).await {
+    match token
+        .confidential_transfer_close_context_state_account(
+            &range_proof_context_state_pubkey,
+            &recipient_associated_token_address,
+            &context_state_authority_pubkey,
+            close_context_state_signer,
+        )
+        .await
+    {
         Ok(RpcClientResponse::Signature(signature)) => {
             println!("Close Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }

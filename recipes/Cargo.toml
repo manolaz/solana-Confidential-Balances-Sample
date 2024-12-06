@@ -8,3 +8,4 @@ setup_participants = { path = "../ingredients/setup_participants" }
 transfer_public_mint = { path = "../ingredients/transfer_public_mint" }
 setup_mint = { path = "../ingredients/setup_mint" }
 tokio = { version = "1", features = ["full"] } 
+setup_token_account = { path = "../ingredients/setup_token_account" }
