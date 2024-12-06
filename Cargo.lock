@@ -3666,6 +3666,10 @@ name = "setup_participants"
 version = "0.1.0"
 dependencies = [
  "keypair_utils",
+ "log",
+ "simple_logger",
+ "solana-client",
+ "solana-sdk",
  "tokio",
 ]
 

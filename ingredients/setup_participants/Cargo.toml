@@ -10,3 +10,8 @@ path = "src/lib.rs"
 [dependencies]
 keypair_utils = { path = "../../utils" }
 tokio = { version = "1", features = ["full"] }
+
+solana-client = "2.1.2"
+solana-sdk = "2.1.2"
+simple_logger = "5.0.0"
+log = "0.4"

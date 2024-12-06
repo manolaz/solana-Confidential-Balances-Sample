@@ -7,7 +7,6 @@ use {
     solana_sdk::{
         commitment_config::CommitmentConfig,
         instruction::Instruction,
-        native_token::LAMPORTS_PER_SOL,
         signature::{Keypair, Signer},
         system_instruction::create_account,
         transaction::Transaction,
@@ -61,31 +60,20 @@ use {
     std::{error::Error, sync::Arc},
     keypair_utils::get_or_create_keypair,
     simple_logger::SimpleLogger,
-    tokio,
 };
 
 pub async fn main() -> Result<(), Box<dyn Error>> {
+
     // Initialize the logger with the trace level
     SimpleLogger::new().with_level(log::LevelFilter::Error).init().unwrap();
 
-
-    // Step 1. Create sender and recipient wallet keypairs -----------------------------------
+    // Step 2. Create Mint Account ----------------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
-
     let client = RpcClient::new_with_commitment(
         String::from("http://127.0.0.1:8899"),
         CommitmentConfig::confirmed(),
     );
-
-    client.request_airdrop(&wallet_1.pubkey(), LAMPORTS_PER_SOL)?;
-    client.request_airdrop(&wallet_2.pubkey(), LAMPORTS_PER_SOL)?;
-
-    //Hack: To await airdrop settlement. Refactor to use async/await with appropriate commitment.
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; 
-    
-    // Step 2. Create Mint Account ----------------------------------------------------
-
     let mint = Keypair::new();
     let mint_authority = &wallet_1;
     let freeze_authority = &wallet_1;
