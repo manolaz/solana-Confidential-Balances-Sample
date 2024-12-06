@@ -2376,6 +2376,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mint_tokens"
+version = "0.1.0"
+dependencies = [
+ "keypair_utils",
+ "solana-client",
+ "solana-sdk",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+ "tokio",
+]
+
+[[package]]
 name = "mio"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3172,6 +3184,7 @@ dependencies = [
 name = "recipes"
 version = "0.1.0"
 dependencies = [
+ "mint_tokens",
  "setup_mint",
  "setup_participants",
  "setup_token_account",

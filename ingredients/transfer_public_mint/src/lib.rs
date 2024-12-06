@@ -5,7 +5,6 @@ use {
     solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient,
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        instruction::Instruction,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
         transaction::Transaction,
@@ -27,7 +26,7 @@ use {
             },
             BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
-        instruction::{mint_to, reallocate},
+        instruction::reallocate,
         solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -60,46 +59,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 2. Setup Mint -------------------------------------------------
     // Step 3. Setup Token Account -------------------------------------------------
     // Step 4. Mint Tokens ----------------------------------------------------------
+    // Step 5. Deposit Tokens -------------------------------------------------------
     let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
     let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let decimals = load_value("decimals")?;
     let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
+    let decimals = load_value("decimals")?;
     let sender_elgamal_keypair =
         ElGamalKeypair::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes())
             .unwrap();
     let sender_aes_key =
         AeKey::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes()).unwrap();
-
-    // Mint 100.00 tokens
-    let amount = 100_00;
-
-    // Instruction to mint tokens
-    let mint_to_instruction: Instruction = mint_to(
-        &spl_token_2022::id(),
-        &mint.pubkey(),                   // Mint
-        &sender_associated_token_address, // Token account to mint to
-        &wallet_1.pubkey(),               // Token account owner
-        &[&wallet_1.pubkey()],            // Additional signers (mint authority)
-        amount,                           // Amount to mint
-    )?;
-
-    let transaction = Transaction::new_signed_with_payer(
-        &[mint_to_instruction],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
-        client.get_latest_blockhash()?,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nMint Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 5. Deposit Tokens -------------------------------------------------------
 
     // Confidential balance has separate "pending" and "available" balances
     // Must first deposit tokens from non-confidential balance to  "pending" confidential balance
