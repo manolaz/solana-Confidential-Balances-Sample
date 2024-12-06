@@ -62,8 +62,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 5. Deposit Tokens -------------------------------------------------------
     // Step 6. Apply Sender's Pending Balance -------------------------------------------------
     // Step 7. Create Recipient Token Account -----------------------------------------
-    let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
-    let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
+    let sender_keypair = Arc::new(get_or_create_keypair("sender_keypair")?);
+    let recipient_keypair = Arc::new(get_or_create_keypair("recipient_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
@@ -80,20 +80,20 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &mint.pubkey(),
         Some(decimals),
-        wallet_1.clone(),
+        sender_keypair.clone(),
     );
 
     // Associated token address of the recipient
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
-        &wallet_2.pubkey(), // Token account owner
+        &recipient_keypair.pubkey(), // Token account owner
         &mint.pubkey(),     // Mint
         &spl_token_2022::id(),
     );
 
     // Instruction to create associated token account
     let create_associated_token_account_instruction = create_associated_token_account(
-        &wallet_2.pubkey(), // Funding account
-        &wallet_2.pubkey(), // Token account owner
+        &recipient_keypair.pubkey(), // Funding account
+        &recipient_keypair.pubkey(), // Token account owner
         &mint.pubkey(),     // Mint
         &spl_token_2022::id(),
     );
@@ -102,18 +102,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let reallocate_instruction = reallocate(
         &spl_token_2022::id(),
         &recipient_associated_token_address,
-        &wallet_2.pubkey(),    // payer
-        &wallet_2.pubkey(),    // owner
-        &[&wallet_2.pubkey()], // signers
+        &recipient_keypair.pubkey(),    // payer
+        &recipient_keypair.pubkey(),    // owner
+        &[&recipient_keypair.pubkey()], // signers
         &[ExtensionType::ConfidentialTransferAccount],
     )?;
 
     // Create the ElGamal keypair and AES key for the recipient token account
     let sender_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
+        ElGamalKeypair::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes())
             .unwrap();
     let sender_aes_key =
-        AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes()).unwrap();
+        AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
 
     let maximum_pending_balance_credit_counter = 65536; // Default value or custom
     let decryptable_balance = sender_aes_key.encrypt(0);
@@ -137,7 +137,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &mint.pubkey(),
         decryptable_balance.into(),
         maximum_pending_balance_credit_counter,
-        &wallet_2.pubkey(),
+        &recipient_keypair.pubkey(),
         &[],
         proof_location,
     )
@@ -152,8 +152,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
-        Some(&wallet_2.pubkey()),
-        &[&wallet_2],
+        Some(&recipient_keypair.pubkey()),
+        &[&recipient_keypair],
         recent_blockhash,
     );
 
@@ -174,7 +174,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Range Proof - prove that ciphertexts encrypt a value in a specified range (0, u64::MAX)
 
     // "Authority" for the proof accounts (to close the accounts after the transfer)
-    let context_state_authority = &wallet_1;
+    let context_state_authority = &sender_keypair;
 
     // Generate address for equality proof account
     let equality_proof_context_state_account = Keypair::new();
@@ -202,9 +202,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let transfer_amount = 50_00;
 
     let sender_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes())?;
+        ElGamalKeypair::new_from_signer(&sender_keypair, &sender_associated_token_address.to_bytes())?;
     let sender_aes_key =
-        AeKey::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes())?;
+        AeKey::new_from_signer(&sender_keypair, &sender_associated_token_address.to_bytes())?;
 
     // Get recipient token account data
     let recipient_account = token
@@ -336,7 +336,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .confidential_transfer_transfer(
             &sender_associated_token_address,
             &recipient_associated_token_address,
-            &wallet_1.pubkey(),
+            &sender_keypair.pubkey(),
             Some(&equality_proof_context_proof_account),
             Some(&ciphertext_validity_proof_account_with_ciphertext),
             Some(&range_proof_context_proof_account),
@@ -346,7 +346,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             &sender_aes_key,
             &recipient_elgamal_pubkey,
             Some(&auditor_elgamal_pubkey),
-            &[&wallet_1],
+            &[&sender_keypair],
         )
         .await
     {
@@ -363,7 +363,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Authority to close the proof accounts
     let context_state_authority_pubkey = context_state_authority.pubkey();
     // Lamports from the closed proof accounts will be sent to this account
-    let destination_account = &wallet_1.pubkey();
+    let destination_account = &sender_keypair.pubkey();
 
     // Close the equality proof account
     let close_equality_proof_instruction = close_context_state(
@@ -399,8 +399,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             close_ciphertext_validity_proof_instruction,
             close_range_proof_instruction,
         ],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1], // Signers
+        Some(&sender_keypair.pubkey()),
+        &[&sender_keypair], // Signers
         recent_blockhash,
     );
 
@@ -430,7 +430,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
         &mint.pubkey(),
         Some(decimals),
-        wallet_2.clone(),
+        recipient_keypair.clone(),
     );
 
     // Get receiver token account data
@@ -452,10 +452,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     // Create the ElGamal keypair and AES key for the recipient token account
     let receiver_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes())
+        ElGamalKeypair::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes())
             .unwrap();
     let receiver_aes_key =
-        AeKey::new_from_signer(&wallet_2, &recipient_associated_token_address.to_bytes()).unwrap();
+        AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
 
     // Update the decryptable available balance (add pending balance to available balance)
     let new_decryptable_available_balance = apply_pending_balance_account_info
@@ -468,15 +468,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &recipient_associated_token_address,      // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
         new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &wallet_2.pubkey(),                       // Token account owner
-        &[&wallet_2.pubkey()],                    // Additional signers
+        &recipient_keypair.pubkey(),                       // Token account owner
+        &[&recipient_keypair.pubkey()],                    // Additional signers
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &[apply_pending_balance_instruction],
-        Some(&wallet_2.pubkey()),
-        &[&wallet_2],
+        Some(&recipient_keypair.pubkey()),
+        &[&recipient_keypair],
         recent_blockhash,
     );
 
@@ -503,7 +503,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let withdraw_account_info = WithdrawAccountInfo::new(extension_data);
 
     // Authority for the withdraw proof account (to close the account)
-    let context_state_authority = &wallet_2;
+    let context_state_authority = &recipient_keypair;
 
     let equality_proof_context_state_keypair = Keypair::new();
     let equality_proof_context_state_pubkey = equality_proof_context_state_keypair.pubkey();
@@ -564,7 +564,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     match token
         .confidential_transfer_withdraw(
             &recipient_associated_token_address,
-            &wallet_2.pubkey(),
+            &recipient_keypair.pubkey(),
             Some(&ProofAccount::ContextAccount(
                 equality_proof_context_state_pubkey,
             )),
@@ -576,7 +576,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             Some(withdraw_account_info),
             &receiver_elgamal_keypair,
             &receiver_aes_key,
-            &[&wallet_2],
+            &[&recipient_keypair],
         )
         .await
     {

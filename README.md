@@ -15,7 +15,7 @@ A collection of ingredients (tests) and recipes (test sequences) demonstrating S
 cargo test -p setup_participants
 
 # Run a specific test from an ingredient
-cargo test -p setup_participants setup_basic_participants
+cargo test -p setup_participants setup_basic_participant
 ```
 
 ### Running Recipes (Test Sequences)

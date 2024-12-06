@@ -1,20 +1,20 @@
 use {
     keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, get_rpc_client, record_value}, solana_sdk::{
-        signer::Signer, system_instruction::create_account, transaction::Transaction,
+        signature::Keypair, signer::Signer, system_instruction::create_account, transaction::Transaction
     }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
 };
 
-pub async fn create_mint() -> Result<(), Box<dyn Error>> {
-    let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
+pub async fn create_mint(absolute_authority: &Keypair) -> Result<(), Box<dyn Error>> {
+    let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let mint_authority = &wallet_1;
-    let freeze_authority = &wallet_1;
-    let decimals = record_value("decimals", 2)?;
+    let mint_authority = absolute_authority;
+    let freeze_authority = absolute_authority;
+    let decimals = record_value("mint_decimals", 2)?;
 
     // Confidential Transfer Extension authority
     // Authority to modify the `ConfidentialTransferMint` configuration and to approve new accounts (if `auto_approve_new_accounts` is false?)
-    let authority = &wallet_1;
+    let authority = absolute_authority;
 
     // Auditor ElGamal pubkey
     // Authority to decrypt any encrypted amounts for the mint
@@ -38,7 +38,7 @@ pub async fn create_mint() -> Result<(), Box<dyn Error>> {
 
     // Instructions to create the mint account
     let create_account_instruction = create_account(
-        &wallet_1.pubkey(),
+        &fee_payer_keypair.pubkey(),
         &mint.pubkey(),
         rent,
         space as u64,
@@ -68,8 +68,8 @@ pub async fn create_mint() -> Result<(), Box<dyn Error>> {
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1, &mint as &dyn Signer],
+        Some(&fee_payer_keypair.pubkey()),
+        &[&fee_payer_keypair, &mint as &dyn Signer],
         recent_blockhash,
     );
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
@@ -86,7 +86,9 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_create_mint() {
-        assert!(create_mint().await.is_ok());
+    async fn test_create_mint() -> Result<(), Box<dyn Error>> {
+        let absolute_authority = get_or_create_keypair("absolute_authority")?;
+        assert!(create_mint(&absolute_authority).await.is_ok());
+        Ok(())
     }
 }

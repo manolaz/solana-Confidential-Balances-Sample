@@ -1,22 +1,16 @@
 use {
-    keypair_utils::{get_or_create_keypair, get_rpc_client},
+    keypair_utils::get_rpc_client,
     solana_sdk::{
-        native_token::LAMPORTS_PER_SOL, signer::Signer,
+        native_token::LAMPORTS_PER_SOL, pubkey::Pubkey
     },
-    std::{error::Error, sync::Arc},
+    std::error::Error,
 };
 
-pub async fn setup_basic_participants() -> Result<(), Box<dyn Error>> {
-
-
-    // Step 1. Create sender and recipient wallet keypairs -----------------------------------
-    let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
-    let wallet_2 = Arc::new(get_or_create_keypair("wallet_2")?);
+pub async fn setup_basic_participant(participant_pubkey: &Pubkey) -> Result<(), Box<dyn Error>> {
 
     let client = get_rpc_client()?;
 
-    client.request_airdrop(&wallet_1.pubkey(), LAMPORTS_PER_SOL)?;
-    client.request_airdrop(&wallet_2.pubkey(), LAMPORTS_PER_SOL)?;
+    client.request_airdrop(&participant_pubkey, LAMPORTS_PER_SOL)?;
 
     //Hack: To await airdrop settlement. Refactor to use async/await with appropriate commitment.
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -26,10 +20,16 @@ pub async fn setup_basic_participants() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
+    use keypair_utils::get_or_create_keypair;
+    use solana_sdk::signer::Signer;
+
     use super::*;
 
     #[tokio::test]
-    async fn test_setup_basic_participants() {
-        assert!(setup_basic_participants().await.is_ok());
+    async fn test_setup_basic_participant() -> Result<(), Box<dyn Error>> {
+        let participant_keypair = get_or_create_keypair("SOLO_TEST_participant_keypair")?;
+
+        setup_basic_participant(&participant_keypair.pubkey()).await?;
+        Ok(())
     }
 }

@@ -3,7 +3,8 @@ use std::{error::Error, sync::Arc};
 use keypair_utils::{
     get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value,
 };
-use solana_sdk::{pubkey::Pubkey, signer::Signer, transaction::Transaction};
+use solana_sdk::{signature::Keypair, signer::Signer, transaction::Transaction};
+use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     error::TokenError,
     extension::{
@@ -19,17 +20,23 @@ use spl_token_client::{
     token::Token,
 };
 
-pub async fn apply_pending_balance() -> Result<(), Box<dyn Error>> {
-    let wallet_1 = Arc::new(get_or_create_keypair("wallet_1")?);
+pub async fn apply_pending_balance(token_account_authority: &Keypair) -> Result<(), Box<dyn Error>> {
+    let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
     let decimals = load_value("decimals")?;
+
+    let token_account_pubkey = get_associated_token_address_with_program_id(
+        &token_account_authority.pubkey(),
+        &mint.pubkey(),
+        &spl_token_2022::id(),
+    );
+    
     let sender_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes())
+        ElGamalKeypair::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes())
             .unwrap();
     let sender_aes_key =
-        AeKey::new_from_signer(&wallet_1, &sender_associated_token_address.to_bytes()).unwrap();
+        AeKey::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes()).unwrap();
 
     // The "pending" balance must be applied to "available" balance before it can be transferred
 
@@ -46,13 +53,13 @@ pub async fn apply_pending_balance() -> Result<(), Box<dyn Error>> {
             &spl_token_2022::id(),
             &mint.pubkey(),
             Some(decimals),
-            wallet_1.clone(),
+            fee_payer_keypair.clone(),
         )
     };
 
     // Get sender token account data
     let token_account_info = token
-        .get_account_info(&sender_associated_token_address)
+        .get_account_info(&token_account_pubkey)
         .await?;
 
     // Unpack the ConfidentialTransferAccount extension portion of the token account data
@@ -75,18 +82,18 @@ pub async fn apply_pending_balance() -> Result<(), Box<dyn Error>> {
     // Create a `ApplyPendingBalance` instruction
     let apply_pending_balance_instruction = instruction::apply_pending_balance(
         &spl_token_2022::id(),
-        &sender_associated_token_address,         // Token account
+        &token_account_pubkey,         // Token account
         expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
         new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &wallet_1.pubkey(),                       // Token account owner
-        &[&wallet_1.pubkey()],                    // Additional signers
+        &token_account_authority.pubkey(),                       // Token account owner
+        &[&token_account_authority.pubkey()],                    // Additional signers
     )?;
 
     let recent_blockhash = client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         &[apply_pending_balance_instruction],
-        Some(&wallet_1.pubkey()),
-        &[&wallet_1],
+        Some(&fee_payer_keypair.pubkey()),
+        &[&fee_payer_keypair, token_account_authority],
         recent_blockhash,
     );
 
@@ -97,14 +104,4 @@ pub async fn apply_pending_balance() -> Result<(), Box<dyn Error>> {
         transaction_signature
     );
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_apply_pending_balance() {
-        apply_pending_balance().await.unwrap();
-    }
 }
