@@ -1,11 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
-    "ingredients/setup_participants",
-    "ingredients/transfer_public_mint",
     "utils",
-    "recipes"
-, "ingredients/setup_mint", "ingredients/setup_token_account", "ingredients/mint_tokens", "ingredients/deposit_tokens", "ingredients/apply_pending_balance", "ingredients/transfer"]
+    "recipes",
+    "ingredients/setup_mint",
+    "ingredients/setup_participants",
+    "ingredients/setup_token_account",
+    "ingredients/mint_tokens",
+    "ingredients/deposit_tokens",
+    "ingredients/apply_pending_balance",
+    "ingredients/transfer",
+    "ingredients/withdraw_tokens"
+]
 
 # Workspace-wide dependencies can be specified here if needed
 [workspace.dependencies]

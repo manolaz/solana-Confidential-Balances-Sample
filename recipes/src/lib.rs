@@ -5,12 +5,13 @@ mod recipe {
     use keypair_utils::get_or_create_keypair;
     use setup_participants;
     use solana_sdk::signer::Signer;
-    use transfer_public_mint;
     use setup_mint;
     use setup_token_account;
     use mint_tokens;
     use deposit_tokens;
     use apply_pending_balance;
+    use transfer;
+    use withdraw_tokens;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn basic_transfer_recipe() -> Result<(), Box<dyn Error>> {
@@ -49,8 +50,8 @@ mod recipe {
         // Step 9. Apply recipient's pending balance
         apply_pending_balance::apply_pending_balance(&recipient_keypair).await?;
 
-        // Step X. Transfer tokens
-        transfer_public_mint::main().await?;
+        // Step 10. Withdraw tokens
+        withdraw_tokens::withdraw_tokens(20_00, &recipient_keypair).await?;
 
         // signature = load_value("last_confidential_transfer_signature")
         // auditor_assert_transfer_amount(signature, assert_amount)

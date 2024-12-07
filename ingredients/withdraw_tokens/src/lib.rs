@@ -1,7 +1,5 @@
-// cargo run --bin main
 use {
     keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, load_value},
-    simple_logger::SimpleLogger,
     solana_sdk::
         signature::{Keypair, Signer}
     ,
@@ -35,26 +33,9 @@ use {
     std::{error::Error, sync::Arc},
 };
 
-pub async fn main() -> Result<(), Box<dyn Error>> {
-    // Initialize the logger with the trace level
-    SimpleLogger::new()
-        .with_level(log::LevelFilter::Error)
-        .init()
-        .unwrap();
-
-    // Step 1. Setup Participants -------------------------------------------------
-    // Step 2. Setup Mint -------------------------------------------------
-    // Step 3. Setup Token Account -------------------------------------------------
-    // Step 4. Mint Tokens ----------------------------------------------------------
-    // Step 5. Deposit Tokens -------------------------------------------------------
-    // Step 6. Apply Sender's Pending Balance -------------------------------------------------
-    // Step 7. Create Recipient Token Account -----------------------------------------
-    // Step 8. Transfer with ZK Proofs ---------------------------------------------------
-    // Step 9. Apply Pending Balance -------------------------------------------------
-    // Step 10. Withdraw Tokens ------------------------------------------------------
+pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) -> Result<(), Box<dyn Error>> {
     let mint = get_or_create_keypair("mint")?;
     let decimals = load_value("decimals")?;
-    let recipient_keypair = Arc::new(get_or_create_keypair("recipient_keypair")?);
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
         &recipient_keypair.pubkey(),
         &mint.pubkey(),
@@ -74,7 +55,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             &spl_token_2022::id(),
             &mint.pubkey(),
             Some(decimals),
-            recipient_keypair.clone(),
+            Arc::new(Keypair::from_bytes(&recipient_keypair.to_bytes()).unwrap()),
+            // ^^^ HACK: Unsafe clone of keypair due to Rust lifetime issues.
         )
     };
 
@@ -83,8 +65,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             .unwrap();
     let receiver_aes_key =
         AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
-
-    let withdraw_amount = 20_00;
 
     // Get recipient token account data
     let token_account = token
@@ -226,10 +206,4 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_main() -> Result<(), Box<dyn Error>> {
-    main().await
 }

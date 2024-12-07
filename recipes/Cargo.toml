@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 setup_participants = { path = "../ingredients/setup_participants" }
-transfer_public_mint = { path = "../ingredients/transfer_public_mint" }
 setup_mint = { path = "../ingredients/setup_mint" }
 tokio = { version = "1", features = ["full"] } 
 setup_token_account = { path = "../ingredients/setup_token_account" }
@@ -15,3 +14,4 @@ apply_pending_balance = { path = "../ingredients/apply_pending_balance" }
 transfer = { path = "../ingredients/transfer" }
 keypair_utils = { path = "../utils" }
 solana-sdk = "2.1.2"
+withdraw_tokens = { path = "../ingredients/withdraw_tokens" }
