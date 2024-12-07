@@ -43,6 +43,8 @@ mod recipe {
         // Step 7. Create recipient token account
         setup_token_account::setup_token_account(&recipient_keypair).await?;
 
+        // Step 8. Transfer tokens with split proofs
+        transfer::with_split_proofs(&sender_keypair, &recipient_keypair, 50_00).await?;
 
         // Step X. Transfer tokens
         transfer_public_mint::main().await?;
