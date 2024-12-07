@@ -41,7 +41,11 @@ use {
 pub async fn with_split_proofs(sender_keypair: &Keypair, recipient_keypair: &Keypair, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let sender_associated_token_address: Pubkey = load_value("sender_associated_token_address")?;
+    let sender_associated_token_address: Pubkey = get_associated_token_address_with_program_id(
+        &sender_keypair.pubkey(),
+        &mint.pubkey(),
+        &spl_token_2022::id(),
+    );
     let decimals = load_value("decimals")?;
 
     let token = {

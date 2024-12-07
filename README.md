@@ -1,6 +1,9 @@
 # Open Questions
 - How does a new global auditor decrypt confidential transfers from prior global auditor's key?
   - We should define expectations for auditor transference.
+- Is the range proof at the limit of the transaction size?
+  - I couldn't add a third-party signer to the range proof txn without triggering the txn size limit.
+  - Sender->Receiver, where Sender pays the fee is a natural use-case if it must be so.
 
 # Confidential Transfers Cookbook
 

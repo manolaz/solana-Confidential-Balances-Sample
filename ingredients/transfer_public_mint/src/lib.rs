@@ -1,25 +1,18 @@
 // cargo run --bin main
 use {
-    keypair_utils::{get_or_create_keypair, get_rpc_client, load_value},
+    keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, load_value},
     simple_logger::SimpleLogger,
-    solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient,
-    solana_sdk::{
-        commitment_config::CommitmentConfig,
-        signature::{Keypair, Signer},
-        transaction::Transaction,
-    },
+    solana_sdk::
+        signature::{Keypair, Signer}
+    ,
     spl_associated_token_account::
         get_associated_token_address_with_program_id
     ,
     spl_token_2022::{
-        error::TokenError,
         extension::{
             confidential_transfer::{
-                account_info::{
-                    ApplyPendingBalanceAccountInfo, WithdrawAccountInfo,
-                },
-                instruction::
-                    apply_pending_balance
+                account_info::
+                    WithdrawAccountInfo
                 ,
                 ConfidentialTransferAccount,
             },
@@ -58,7 +51,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Step 7. Create Recipient Token Account -----------------------------------------
     // Step 8. Transfer with ZK Proofs ---------------------------------------------------
     // Step 9. Apply Pending Balance -------------------------------------------------
-    let client = get_rpc_client()?;
+    // Step 10. Withdraw Tokens ------------------------------------------------------
     let mint = get_or_create_keypair("mint")?;
     let decimals = load_value("decimals")?;
     let recipient_keypair = Arc::new(get_or_create_keypair("recipient_keypair")?);
@@ -68,81 +61,28 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         &spl_token_2022::id(),
     );
 
-    // The "pending" balance must be applied to "available" balance before it can be withdrawn
-
     // A "non-blocking" RPC client (for async calls)
-    let rpc_client = NonBlockingRpcClient::new_with_commitment(
-        String::from("http://127.0.0.1:8899"),
-        CommitmentConfig::confirmed(),
-    );
+    let token = {
+        let rpc_client = get_non_blocking_rpc_client()?;
 
-    let program_client =
-        ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
+        let program_client =
+            ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
 
-    // Create a "token" client, to use various helper functions for Token Extensions
-    let token = Token::new(
-        Arc::new(program_client),
-        &spl_token_2022::id(),
-        &mint.pubkey(),
-        Some(decimals),
-        recipient_keypair.clone(),
-    );
+        // Create a "token" client, to use various helper functions for Token Extensions
+        Token::new(
+            Arc::new(program_client),
+            &spl_token_2022::id(),
+            &mint.pubkey(),
+            Some(decimals),
+            recipient_keypair.clone(),
+        )
+    };
 
-    // Get receiver token account data
-    let token_account_info = token
-        .get_account_info(&recipient_associated_token_address)
-        .await?;
-
-    // Unpack the ConfidentialTransferAccount extension portion of the token account data
-    let confidential_transfer_account =
-        token_account_info.get_extension::<ConfidentialTransferAccount>()?;
-
-    // ConfidentialTransferAccount extension information needed to construct an `ApplyPendingBalance` instruction.
-    let apply_pending_balance_account_info =
-        ApplyPendingBalanceAccountInfo::new(confidential_transfer_account);
-
-    // Return the number of times the pending balance has been credited
-    let expected_pending_balance_credit_counter =
-        apply_pending_balance_account_info.pending_balance_credit_counter();
-
-    // Create the ElGamal keypair and AES key for the recipient token account
     let receiver_elgamal_keypair =
         ElGamalKeypair::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes())
             .unwrap();
     let receiver_aes_key =
         AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
-
-    // Update the decryptable available balance (add pending balance to available balance)
-    let new_decryptable_available_balance = apply_pending_balance_account_info
-        .new_decryptable_available_balance(&receiver_elgamal_keypair.secret(), &receiver_aes_key)
-        .map_err(|_| TokenError::AccountDecryption)?;
-
-    // Create a `ApplyPendingBalance` instruction
-    let apply_pending_balance_instruction = apply_pending_balance(
-        &spl_token_2022::id(),
-        &recipient_associated_token_address,      // Token account
-        expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
-        new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &recipient_keypair.pubkey(),                       // Token account owner
-        &[&recipient_keypair.pubkey()],                    // Additional signers
-    )?;
-
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &[apply_pending_balance_instruction],
-        Some(&recipient_keypair.pubkey()),
-        &[&recipient_keypair],
-        recent_blockhash,
-    );
-
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
-
-    println!(
-        "\nApply Pending Balance (to recipient): https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
-
-    // Step 10. Withdraw Tokens ------------------------------------------------------
 
     let withdraw_amount = 20_00;
 

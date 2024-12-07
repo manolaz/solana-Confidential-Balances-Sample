@@ -46,6 +46,9 @@ mod recipe {
         // Step 8. Transfer tokens with split proofs
         transfer::with_split_proofs(&sender_keypair, &recipient_keypair, 50_00).await?;
 
+        // Step 9. Apply recipient's pending balance
+        apply_pending_balance::apply_pending_balance(&recipient_keypair).await?;
+
         // Step X. Transfer tokens
         transfer_public_mint::main().await?;
 
