@@ -1,5 +1,6 @@
 use std::{error::Error, str::FromStr};
 
+use base58::FromBase58;
 use keypair_utils::{get_rpc_client, load_value};
 use solana_client::rpc_config::RpcTransactionConfig;
 use solana_transaction_status::{
@@ -51,12 +52,25 @@ pub async fn last_transfer_amount(
             if let UiMessage::Raw(raw_message) = ui_transaction.message {
                 //let data = raw_message.instructions[0].data.clone();
 
-                let mut prefixed_data = vec![27u8]; // 27 is the instruction type for confidential transfer
-                prefixed_data.extend_from_slice(&raw_message.instructions[0].data.as_bytes());
+                // Attempt1 - Reverse engineering:
+                // 27 is the instruction type for confidential transfer
+                // 7 is the instruction type for transfer
+                // let mut prefixed_data = vec![27u8, 7u8]; 
+                // prefixed_data.extend_from_slice(&raw_message.instructions[0].data.as_bytes());
 
 
-                //println!("String Data: {:?}\n", data);
-                //println!("Hex Data: {:?}\n", hex::encode(data.clone()));
+                // Attempt2 - Solana explorer's transaction data:
+                // let data_from_signature_from_solana_explorer = "1b07d2bb5c10b3ffeef06c8725e26552718c3055d7b545d6f7dabcb6a2f45d6ad2f4f7ce3ffc1aae1e74f5f771efada2deb7b28d9681fa263348b1a645faad493b2a41bb76629ab95979ff9723009161a004418b5305f7286ad589c7c543dec61faaf5399969ba9ed35acf060ed51a47bb712d290d65e4b5320f1e30ec3ff2e2adff203b65042ef7d0c7e235d52c84ba0e64c69d3d73f0a5a02e5bd2cd5620f61e60fc989e19000000";
+                // let mut data_from_signature_from_solana_explorer_bytes = vec![27u8, 7u8];
+                // data_from_signature_from_solana_explorer_bytes.extend_from_slice(&hex::decode(data_from_signature_from_solana_explorer)?);
+
+                // Attempt3 - Base58 of message data to Hex:
+                let decoded = raw_message.instructions[0].data.from_base58()
+                    .map_err(|e| format!("Base58 decode error: {:?}", e))?;                
+                
+                let mut prefixed_data = vec![27u8, 7u8];
+                prefixed_data.extend_from_slice(&decoded);
+
 
                 let compiled_instruction = CompiledInstruction {
                     program_id_index: raw_message.instructions[0].program_id_index,
