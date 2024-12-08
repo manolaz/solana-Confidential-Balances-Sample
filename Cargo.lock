@@ -1643,6 +1643,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
+name = "global_auditor_assert"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dotenv",
+ "hex",
+ "keypair_utils",
+ "log",
+ "serde_json",
+ "simple_logger",
+ "solana-clap-utils",
+ "solana-client",
+ "solana-program",
+ "solana-remote-wallet",
+ "solana-sdk",
+ "solana-transaction-status",
+ "solana-transaction-status-client-types",
+ "spl-associated-token-account 6.0.0",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+ "spl-token-confidential-transfer-proof-extraction",
+ "spl-token-confidential-transfer-proof-generation",
+ "tokio",
+]
+
+[[package]]
 name = "governor"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1731,6 +1757,12 @@ name = "hermit-abi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hidapi"
@@ -3215,6 +3247,7 @@ version = "0.1.0"
 dependencies = [
  "apply_pending_balance",
  "deposit_tokens",
+ "global_auditor_assert",
  "keypair_utils",
  "mint_tokens",
  "setup_mint",

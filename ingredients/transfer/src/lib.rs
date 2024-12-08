@@ -1,6 +1,6 @@
 
 use {
-    keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value},
+    keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, record_value},
     solana_sdk::{
         pubkey::Pubkey,
         signature::{Keypair, Signer},
@@ -46,7 +46,7 @@ pub async fn with_split_proofs(sender_keypair: &Keypair, recipient_keypair: &Key
         &mint.pubkey(),
         &spl_token_2022::id(),
     );
-    let decimals = load_value("decimals")?;
+    let decimals = load_value("mint_decimals")?;
 
     let token = {
         let rpc_client = get_non_blocking_rpc_client()?;
@@ -266,6 +266,7 @@ pub async fn with_split_proofs(sender_keypair: &Keypair, recipient_keypair: &Key
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
+            record_value("last_confidential_transfer_signature", signature.to_string())?;
             println!("\nTransfer with Split Proofs: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         _ => {

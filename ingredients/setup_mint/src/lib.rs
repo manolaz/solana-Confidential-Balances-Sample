@@ -1,10 +1,10 @@
 use {
-    keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, get_rpc_client, record_value}, solana_sdk::{
+    keypair_utils::{get_or_create_keypair, get_rpc_client, record_value}, solana_sdk::{
         signature::Keypair, signer::Signer, system_instruction::create_account, transaction::Transaction
-    }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
+    }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, solana_zk_sdk::encryption::elgamal::ElGamalKeypair, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
 };
 
-pub async fn create_mint(absolute_authority: &Keypair) -> Result<(), Box<dyn Error>> {
+pub async fn create_mint(absolute_authority: &Keypair, auditor_elgamal_keypair: &ElGamalKeypair) -> Result<(), Box<dyn Error>> {
     let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
@@ -15,10 +15,6 @@ pub async fn create_mint(absolute_authority: &Keypair) -> Result<(), Box<dyn Err
     // Confidential Transfer Extension authority
     // Authority to modify the `ConfidentialTransferMint` configuration and to approve new accounts (if `auto_approve_new_accounts` is false?)
     let authority = absolute_authority;
-
-    // Auditor ElGamal pubkey
-    // Authority to decrypt any encrypted amounts for the mint
-    let auditor_elgamal_keypair = get_or_create_keypair_elgamal("auditor_elgamal")?;
 
     // ConfidentialTransferMint extension parameters
     let confidential_transfer_mint_extension =
@@ -79,16 +75,4 @@ pub async fn create_mint(absolute_authority: &Keypair) -> Result<(), Box<dyn Err
         transaction_signature
     );
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_create_mint() -> Result<(), Box<dyn Error>> {
-        let absolute_authority = get_or_create_keypair("absolute_authority")?;
-        assert!(create_mint(&absolute_authority).await.is_ok());
-        Ok(())
-    }
 }

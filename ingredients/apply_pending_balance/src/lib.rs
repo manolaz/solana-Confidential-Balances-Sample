@@ -24,7 +24,7 @@ pub async fn apply_pending_balance(token_account_authority: &Keypair) -> Result<
     let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
-    let decimals = load_value("decimals")?;
+    let decimals = load_value("mint_decimals")?;
 
     let token_account_pubkey = get_associated_token_address_with_program_id(
         &token_account_authority.pubkey(),

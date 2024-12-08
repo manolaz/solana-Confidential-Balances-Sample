@@ -70,11 +70,21 @@ pub fn record_value<'a, T: serde::Serialize>(variable_name: &str, value: T) -> R
     // Serialize the value to a JSON string
     let json_value = serde_json::to_string(&value)?;
 
-    // Open .env file, create it if it does not exist
-    let mut file = OpenOptions::new().append(true).create(true).open(ENV_FILE_PATH)?;
+    // Read the existing .env file content
+    let mut content = std::fs::read_to_string(ENV_FILE_PATH).unwrap_or_default();
 
-    // Write the serialized value to the .env file
-    writeln!(file, "{}={}", variable_name, json_value)?;
+    // Remove any existing line with the same variable name
+    content = content
+        .lines()
+        .filter(|line| !line.starts_with(&format!("{}=", variable_name)))
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    // Append the new variable value
+    content.push_str(&format!("\n{}={}", variable_name, json_value));
+
+    // Write the updated content back to the .env file
+    std::fs::write(ENV_FILE_PATH, content)?;
 
     Ok(value)
 }
@@ -83,12 +93,20 @@ pub fn load_value<T: serde::de::DeserializeOwned>(variable_name: &str) -> Result
     dotenv::dotenv().ok();
 
     // Get the environment variable
-    let json_value = env::var(variable_name)?;
+    let env_value = env::var(variable_name)?;
 
-    // Deserialize the JSON string to the object
-    let value = serde_json::from_str(&json_value)?;
+    // Try to deserialize the JSON string to the object
+    let value: Result<T, _> = serde_json::from_str(&env_value);
 
-    Ok(value)
+    // If deserialization fails, try to parse it as a plain string
+    match value {
+        Ok(val) => Ok(val),
+        Err(_) => {
+            // Attempt to parse as a plain string or integer
+            let plain_value: T = serde_json::from_str(&format!("\"{}\"", env_value))?;
+            Ok(plain_value)
+        }
+    }
 }
 
 pub fn get_rpc_client() -> Result<RpcClient, Box<dyn Error>> {
