@@ -49,13 +49,13 @@ mod recipe {
         transfer::with_split_proofs(&sender_keypair, &recipient_keypair, 50_00).await?;
 
         // Step 9. Apply recipient's pending balance
-        //apply_pending_balance::apply_pending_balance(&recipient_keypair).await?;
+        apply_pending_balance::apply_pending_balance(&recipient_keypair).await?;
 
         // Step 10. Withdraw tokens
-        //withdraw_tokens::withdraw_tokens(20_00, &recipient_keypair).await?;
+        withdraw_tokens::withdraw_tokens(20_00, &recipient_keypair).await?;
 
         // Step 11. Auditor asserts last transfer amount
-        global_auditor_assert::last_transfer_amount(20_00, &auditor_elgamal_keypair).await?;
+        //global_auditor_assert::last_transfer_amount(20_00, &auditor_elgamal_keypair).await?;
         
         Ok(())
     }

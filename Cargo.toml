@@ -11,7 +11,7 @@ members = [
     "ingredients/apply_pending_balance",
     "ingredients/transfer",
     "ingredients/withdraw_tokens"
-, "ingredients/global_auditor_assert"]
+, "ingredients/global_auditor_assert", "ingredients/setup_mint_confidential"]
 
 # Workspace-wide dependencies can be specified here if needed
 [workspace.dependencies]

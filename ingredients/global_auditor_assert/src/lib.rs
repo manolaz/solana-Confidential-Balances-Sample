@@ -9,7 +9,10 @@ use solana_transaction_status::{
 use solana_transaction_status_client_types::{
     EncodedTransaction, UiInstruction, UiMessage, UiTransactionEncoding,
 };
-use spl_token_2022::solana_zk_sdk::encryption::elgamal::ElGamalKeypair;
+use spl_pod::bytemuck::pod_get_packed_len;
+use spl_token_2022::{
+    extension::confidential_transfer::instruction::TransferInstructionData, instruction::decode_instruction_data, solana_zk_sdk::encryption::elgamal::ElGamalKeypair
+};
 // use solana_rpc_client_api::{
 //     client_error::Error,
 //     config::RpcTransactionConfig,
@@ -50,48 +53,59 @@ pub async fn last_transfer_amount(
     match tx.transaction.transaction {
         EncodedTransaction::Json(ui_transaction) => {
             if let UiMessage::Raw(raw_message) = ui_transaction.message {
-                //let data = raw_message.instructions[0].data.clone();
+                println!("Raw message: {:?}\n", raw_message.instructions[0].data);
 
-                // Attempt1 - Reverse engineering:
-                // 27 is the instruction type for confidential transfer
-                // 7 is the instruction type for transfer
+                /****************************************************************
+                // Attempt1 - Reverse engineering, manual destructuring:
+                *****************************************************************/
+                // 27 is the token instruction type for confidential transfer
+                // 7 is the extension instruction type for transfer
                 // let mut prefixed_data = vec![27u8, 7u8]; 
                 // prefixed_data.extend_from_slice(&raw_message.instructions[0].data.as_bytes());
 
+                // let compiled_instruction = CompiledInstruction {
+                //     program_id_index: raw_message.instructions[0].program_id_index,
+                //     accounts: raw_message.instructions[0].accounts.clone(),
+                //     data: prefixed_data,// THIS IS WRONG???
+                // };
+                // let keys_vec = raw_message
+                //     .account_keys
+                //     .iter()
+                //     .map(|key| Pubkey::from_str(key).unwrap())
+                //     .collect::<Vec<Pubkey>>();
+                // let account_keys =
+                //     solana_program::message::AccountKeys::new(keys_vec.as_slice(), None);
+                // let parsed_token = parse_token::parse_token(&compiled_instruction, &account_keys)?;
+                // println!("Parsed token: {:?}\n", parsed_token.instruction_type);
 
-                // Attempt2 - Solana explorer's transaction data:
+                /****************************************************************
+                // Attempt2 - Solana explorer's hardcoded transaction data:
+                *****************************************************************/
                 // let data_from_signature_from_solana_explorer = "1b07d2bb5c10b3ffeef06c8725e26552718c3055d7b545d6f7dabcb6a2f45d6ad2f4f7ce3ffc1aae1e74f5f771efada2deb7b28d9681fa263348b1a645faad493b2a41bb76629ab95979ff9723009161a004418b5305f7286ad589c7c543dec61faaf5399969ba9ed35acf060ed51a47bb712d290d65e4b5320f1e30ec3ff2e2adff203b65042ef7d0c7e235d52c84ba0e64c69d3d73f0a5a02e5bd2cd5620f61e60fc989e19000000";
                 // let mut data_from_signature_from_solana_explorer_bytes = vec![27u8, 7u8];
+                //
+                // (using `compiled_instruction` above)
+                //
                 // data_from_signature_from_solana_explorer_bytes.extend_from_slice(&hex::decode(data_from_signature_from_solana_explorer)?);
+                // let prefixed_data = data_from_signature_from_solana_explorer_bytes;
+                // let parsed_token = parse_token::parse_token(&compiled_instruction, &account_keys)?;
+                // println!("Parsed token: {:?}\n", parsed_token.instruction_type);
 
+                /****************************************************************
                 // Attempt3 - Base58 of message data to Hex:
-                let decoded = raw_message.instructions[0].data.from_base58()
-                    .map_err(|e| format!("Base58 decode error: {:?}", e))?;                
-                
-                let mut prefixed_data = vec![27u8, 7u8];
-                prefixed_data.extend_from_slice(&decoded);
+                *****************************************************************/
+                // let decoded = raw_message.instructions[0].data.from_base58()
+                //     .map_err(|e| format!("Base58 decode error: {:?}", e))?;                
 
+                // let mut prefixed_data = vec![27u8, 7u8];
+                // prefixed_data.extend_from_slice(&decoded);
 
-                let compiled_instruction = CompiledInstruction {
-                    program_id_index: raw_message.instructions[0].program_id_index,
-                    accounts: raw_message.instructions[0].accounts.clone(),
-                    
-                    
-                    data: prefixed_data,// THIS IS WRONG???
-                };
+                // let target_len = pod_get_packed_len::<TransferInstructionData>();
+                // println!("Target len: {:?}\n", target_len);
+                // println!("Prefixed data len: {:?}\n", prefixed_data.len());
 
-                let keys_vec = raw_message
-                    .account_keys
-                    .iter()
-                    .map(|key| Pubkey::from_str(key).unwrap())
-                    .collect::<Vec<Pubkey>>();
-
-                let account_keys =
-                    solana_program::message::AccountKeys::new(keys_vec.as_slice(), None);
-                
-
-                let parsed_token = parse_token::parse_token(&compiled_instruction, &account_keys)?;
-                println!("Parsed token: {:?}\n", parsed_token.instruction_type);
+                // let decoded_instruction:TransferInstructionData = *decode_instruction_data(&prefixed_data)?;
+                // println!("Decoded instruction: {:?}\n", decoded_instruction);
             }
         }
         _ => println!("Unexpected transaction encoding"),

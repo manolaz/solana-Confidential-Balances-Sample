@@ -1,0 +1,6 @@
+[package]
+name = "setup_mint_confidential"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
