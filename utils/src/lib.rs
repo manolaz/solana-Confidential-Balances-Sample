@@ -7,13 +7,14 @@ use std::env;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
+use dotenvy;
 
 const ENV_FILE_PATH: &str = "../.env";
 const RPC_URL: &str = "http://127.0.0.1:8899";
 
 // Get or create a keypair from an .env file
 pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Error>> {
-    dotenv::dotenv().ok();
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     match env::var(variable_name) {
         Ok(secret_key_string) => {
@@ -40,7 +41,7 @@ pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Err
 }
 
 pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypair, Box<dyn Error>> {
-    dotenv::dotenv().ok();
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     match env::var(variable_name) {
         Ok(secret_key_string) => {
@@ -65,7 +66,7 @@ pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypa
 }
 
 pub fn record_value<'a, T: serde::Serialize>(variable_name: &str, value: T) -> Result<T, Box<dyn Error>> {
-    dotenv::dotenv().ok();
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     // Serialize the value to a JSON string
     let json_value = serde_json::to_string(&value)?;
@@ -90,7 +91,8 @@ pub fn record_value<'a, T: serde::Serialize>(variable_name: &str, value: T) -> R
 }
 
 pub fn load_value<T: serde::de::DeserializeOwned>(variable_name: &str) -> Result<T, Box<dyn Error>> {
-    dotenv::dotenv().ok();
+    // Reload the .env file to ensure the latest values are loaded
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     // Get the environment variable
     let env_value = env::var(variable_name)?;

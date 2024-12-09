@@ -13,7 +13,7 @@ mod recipe {
     use transfer;
     use withdraw_tokens;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn basic_transfer_recipe() -> Result<(), Box<dyn Error>> {
         let sender_keypair = get_or_create_keypair("sender_keypair")?;
         let recipient_keypair = get_or_create_keypair("recipient_keypair")?;
@@ -55,17 +55,8 @@ mod recipe {
         withdraw_tokens::withdraw_tokens(20_00, &recipient_keypair).await?;
 
         // Step 11. Auditor asserts last transfer amount
-        //global_auditor_assert::last_transfer_amount(20_00, &auditor_elgamal_keypair).await?;
+        global_auditor_assert::last_transfer_amount(50_00, &auditor_elgamal_keypair).await?;
         
-        Ok(())
-    }
-
-    // Add more recipes as needed, each with their own sequence of ingredients
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn another_recipe() -> Result<(), Box<dyn Error>> {
-        // Different combination/order of ingredients
-        //setup_participants::setup_basic_participant().await?;
-        // ... other ingredients
         Ok(())
     }
 }

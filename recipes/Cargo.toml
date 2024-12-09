@@ -16,3 +16,4 @@ keypair_utils = { path = "../utils" }
 solana-sdk = "2.1.2"
 withdraw_tokens = { path = "../ingredients/withdraw_tokens" }
 global_auditor_assert = { path = "../ingredients/global_auditor_assert" }
+dotenvy = "0.15.7"

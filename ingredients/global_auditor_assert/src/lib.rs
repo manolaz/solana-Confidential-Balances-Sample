@@ -1,126 +1,85 @@
 use std::{error::Error, str::FromStr};
 
-use base58::FromBase58;
 use keypair_utils::{get_rpc_client, load_value};
+use bs58;
 use solana_client::rpc_config::RpcTransactionConfig;
-use solana_transaction_status::{
-    self, parse_token, UiParsedInstruction, UiPartiallyDecodedInstruction,
-};
 use solana_transaction_status_client_types::{
-    EncodedTransaction, UiInstruction, UiMessage, UiTransactionEncoding,
+    EncodedTransaction, UiMessage, UiTransactionEncoding,
 };
-use spl_pod::bytemuck::pod_get_packed_len;
 use spl_token_2022::{
-    extension::confidential_transfer::instruction::TransferInstructionData, instruction::decode_instruction_data, solana_zk_sdk::encryption::elgamal::ElGamalKeypair
-};
-// use solana_rpc_client_api::{
-//     client_error::Error,
-//     config::RpcTransactionConfig,
-// };
-// use solana_rpc_client::rpc_client::RpcClient;
-use solana_sdk::{
-    commitment_config::CommitmentConfig,
-    instruction::{self, CompiledInstruction},
-    pubkey::Pubkey,
-    signature::{Signature, Signer},
-    signer::keypair::Keypair,
-    system_transaction,
+    extension::confidential_transfer::instruction::TransferInstructionData, instruction::decode_instruction_data, solana_zk_sdk::encryption::elgamal::{ElGamalCiphertext, ElGamalKeypair}
 };
 
-use solana_sdk::message::AccountKeys;
-// use solana_transaction_status_client_types::UiTransactionEncoding;
+use solana_sdk::{
+    commitment_config::CommitmentConfig,
+    signature::Signature,
+};
+
+use spl_token_confidential_transfer_proof_generation::{try_combine_lo_hi_ciphertexts, TRANSFER_AMOUNT_LO_BITS};
 
 pub async fn last_transfer_amount(
     asserting_amount: u64,
     auditor_keypair: &ElGamalKeypair,
 ) -> Result<(), Box<dyn Error>> {
+    // Load the last confidential transfer signature from storage
     let loaded_signature: String = load_value("last_confidential_transfer_signature")?;
 
-    println!("Loaded signature: {:?}\n", loaded_signature);
+    // Convert the loaded signature string into a Signature object
     let signature = Signature::from_str(loaded_signature.as_str())?;
 
+    // Get the RPC client to interact with the blockchain
     let client = get_rpc_client()?;
+    
+    // Configure the transaction request with specific encoding and commitment settings
     let config = RpcTransactionConfig {
         encoding: Some(UiTransactionEncoding::Json),
         commitment: Some(CommitmentConfig::confirmed()),
         max_supported_transaction_version: Some(0),
     };
+
+    // Fetch the transaction details using the signature and configuration
     let tx = client.get_transaction_with_config(&signature, config)?;
 
-    //println!("Tx: {:?}\n", tx);
-
-    // Extract the transaction's message
+    // Extract the transaction's message to process it
     match tx.transaction.transaction {
         EncodedTransaction::Json(ui_transaction) => {
             if let UiMessage::Raw(raw_message) = ui_transaction.message {
-                println!("Raw message: {:?}\n", raw_message.instructions[0].data);
+                
+                // Decode the base58 encoded instruction data
+                let input = bs58::decode(raw_message.instructions[0].data.clone())
+                    .into_vec()
+                    .map_err(|e| format!("Base58 decode error: {:?}", e))?;                
 
-                /****************************************************************
-                // Attempt1 - Reverse engineering, manual destructuring:
-                *****************************************************************/
-                // 27 is the token instruction type for confidential transfer
-                // 7 is the extension instruction type for transfer
-                // let mut prefixed_data = vec![27u8, 7u8]; 
-                // prefixed_data.extend_from_slice(&raw_message.instructions[0].data.as_bytes());
+                // Trim the token instruction type from the input
+                let input = &input[1..];
 
-                // let compiled_instruction = CompiledInstruction {
-                //     program_id_index: raw_message.instructions[0].program_id_index,
-                //     accounts: raw_message.instructions[0].accounts.clone(),
-                //     data: prefixed_data,// THIS IS WRONG???
-                // };
-                // let keys_vec = raw_message
-                //     .account_keys
-                //     .iter()
-                //     .map(|key| Pubkey::from_str(key).unwrap())
-                //     .collect::<Vec<Pubkey>>();
-                // let account_keys =
-                //     solana_program::message::AccountKeys::new(keys_vec.as_slice(), None);
-                // let parsed_token = parse_token::parse_token(&compiled_instruction, &account_keys)?;
-                // println!("Parsed token: {:?}\n", parsed_token.instruction_type);
+                // Decode the instruction data into a TransferInstructionData object
+                let decoded_instruction: TransferInstructionData = *decode_instruction_data(&input)?;
 
-                /****************************************************************
-                // Attempt2 - Solana explorer's hardcoded transaction data:
-                *****************************************************************/
-                // let data_from_signature_from_solana_explorer = "1b07d2bb5c10b3ffeef06c8725e26552718c3055d7b545d6f7dabcb6a2f45d6ad2f4f7ce3ffc1aae1e74f5f771efada2deb7b28d9681fa263348b1a645faad493b2a41bb76629ab95979ff9723009161a004418b5305f7286ad589c7c543dec61faaf5399969ba9ed35acf060ed51a47bb712d290d65e4b5320f1e30ec3ff2e2adff203b65042ef7d0c7e235d52c84ba0e64c69d3d73f0a5a02e5bd2cd5620f61e60fc989e19000000";
-                // let mut data_from_signature_from_solana_explorer_bytes = vec![27u8, 7u8];
-                //
-                // (using `compiled_instruction` above)
-                //
-                // data_from_signature_from_solana_explorer_bytes.extend_from_slice(&hex::decode(data_from_signature_from_solana_explorer)?);
-                // let prefixed_data = data_from_signature_from_solana_explorer_bytes;
-                // let parsed_token = parse_token::parse_token(&compiled_instruction, &account_keys)?;
-                // println!("Parsed token: {:?}\n", parsed_token.instruction_type);
+                // Extract and convert the low and high ciphertext parts
+                let ct_pod_lo = decoded_instruction.transfer_amount_auditor_ciphertext_lo;
+                let ct_lo = ElGamalCiphertext::try_from(ct_pod_lo)?;
+                let ct_pod_hi = decoded_instruction.transfer_amount_auditor_ciphertext_hi;
+                let ct_hi = ElGamalCiphertext::try_from(ct_pod_hi)?;
 
-                /****************************************************************
-                // Attempt3 - Base58 of message data to Hex:
-                *****************************************************************/
-                // let decoded = raw_message.instructions[0].data.from_base58()
-                //     .map_err(|e| format!("Base58 decode error: {:?}", e))?;                
+                // Combine the low and high ciphertexts to get the full transfer amount ciphertext
+                let transfer_amount_auditor_ciphertext = try_combine_lo_hi_ciphertexts(
+                    &ct_lo,
+                    &ct_hi,
+                    TRANSFER_AMOUNT_LO_BITS,
+                ).ok_or(format!("Failed to combine ciphertexts"))?;
 
-                // let mut prefixed_data = vec![27u8, 7u8];
-                // prefixed_data.extend_from_slice(&decoded);
+                // Decrypt the transfer amount using the auditor's secret key
+                let decrypted_amount = auditor_keypair.secret().decrypt(&transfer_amount_auditor_ciphertext);
 
-                // let target_len = pod_get_packed_len::<TransferInstructionData>();
-                // println!("Target len: {:?}\n", target_len);
-                // println!("Prefixed data len: {:?}\n", prefixed_data.len());
-
-                // let decoded_instruction:TransferInstructionData = *decode_instruction_data(&prefixed_data)?;
-                // println!("Decoded instruction: {:?}\n", decoded_instruction);
+                // Decode the decrypted amount and assert it matches the expected asserting amount
+                let decrypted_decoded_amount = decrypted_amount.decode_u32().ok_or(format!("Failed to decode u32"))?;
+                assert_eq!(decrypted_decoded_amount, asserting_amount);
             }
         }
+        // Handle unexpected transaction encoding
         _ => println!("Unexpected transaction encoding"),
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_last_transfer_amount() -> Result<(), Box<dyn Error>> {
-        last_transfer_amount(100, &ElGamalKeypair::new_rand()).await?;
-        Ok(())
-    }
 }

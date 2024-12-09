@@ -428,12 +428,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "base58"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6107fe1be6682a68940da878d9e9f5e90ca5745b3dec9fd1bb393c8777d4f581"
-
-[[package]]
 name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1232,6 +1226,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
 name = "downcast"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1652,7 +1652,7 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 name = "global_auditor_assert"
 version = "0.1.0"
 dependencies = [
- "base58",
+ "bs58",
  "clap",
  "dotenv",
  "hex",
@@ -2238,6 +2238,8 @@ name = "keypair_utils"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "dotenvy",
+ "lazy_static",
  "serde",
  "serde_json",
  "solana-client",
@@ -3255,6 +3257,7 @@ version = "0.1.0"
 dependencies = [
  "apply_pending_balance",
  "deposit_tokens",
+ "dotenvy",
  "global_auditor_assert",
  "keypair_utils",
  "mint_tokens",

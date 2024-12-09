@@ -11,3 +11,5 @@ serde_json = "1.0.1"
 solana-zk-sdk = "2.1.2"
 solana-client = "2.1.2"
 spl-token-client = { git = "https://github.com/solana-labs/solana-program-library" }
+lazy_static = "1.5.0"
+dotenvy = "0.15.7"
