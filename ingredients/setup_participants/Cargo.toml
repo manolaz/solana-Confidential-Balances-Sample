@@ -9,5 +9,5 @@ path = "src/lib.rs"
 
 [dependencies]
 keypair_utils = { path = "../../utils" }
-tokio = { version = "1", features = ["full"] }
-solana-sdk = "2.1.2"
+tokio = { workspace = true }
+solana-sdk = { workspace = true }

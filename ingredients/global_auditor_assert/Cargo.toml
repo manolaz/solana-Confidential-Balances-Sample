@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-solana-sdk = "2.1.2"
-solana-client = "2.1.2"
-solana-transaction-status-client-types = "2.1.2"
-spl-token-2022 = { git = "https://github.com/solana-labs/solana-program-library" }
-spl-token-confidential-transfer-proof-generation = { git = "https://github.com/solana-labs/solana-program-library" }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-transaction-status-client-types = { workspace = true }
+spl-token-2022 = { workspace = true }
+spl-token-confidential-transfer-proof-generation = { workspace = true }
 
 keypair_utils = { path = "../../utils" }
-bs58 = "0.5.1"
+bs58 = { workspace = true }

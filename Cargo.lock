@@ -5828,7 +5828,7 @@ dependencies = [
 [[package]]
 name = "spl-associated-token-account"
 version = "6.0.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "borsh 1.5.3",
  "num-derive",
@@ -5843,7 +5843,7 @@ dependencies = [
 [[package]]
 name = "spl-associated-token-account-client"
 version = "2.0.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "solana-instruction",
  "solana-pubkey",
@@ -5863,12 +5863,12 @@ dependencies = [
 [[package]]
 name = "spl-discriminator"
 version = "0.4.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "solana-program-error",
  "solana-sha256-hasher",
- "spl-discriminator-derive 0.2.0 (git+https://github.com/solana-labs/solana-program-library)",
+ "spl-discriminator-derive 0.2.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
 ]
 
 [[package]]
@@ -5885,10 +5885,10 @@ dependencies = [
 [[package]]
 name = "spl-discriminator-derive"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "quote",
- "spl-discriminator-syn 0.2.0 (git+https://github.com/solana-labs/solana-program-library)",
+ "spl-discriminator-syn 0.2.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
  "syn 2.0.90",
 ]
 
@@ -5908,7 +5908,7 @@ dependencies = [
 [[package]]
 name = "spl-discriminator-syn"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5920,7 +5920,7 @@ dependencies = [
 [[package]]
 name = "spl-elgamal-registry"
 version = "0.1.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "solana-program",
@@ -5969,7 +5969,7 @@ dependencies = [
 [[package]]
 name = "spl-pod"
 version = "0.5.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "borsh 1.5.3",
  "bytemuck",
@@ -6001,12 +6001,12 @@ dependencies = [
 [[package]]
 name = "spl-program-error"
 version = "0.6.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
- "spl-program-error-derive 0.4.1 (git+https://github.com/solana-labs/solana-program-library)",
+ "spl-program-error-derive 0.4.1 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
  "thiserror 2.0.6",
 ]
 
@@ -6025,7 +6025,7 @@ dependencies = [
 [[package]]
 name = "spl-program-error-derive"
 version = "0.4.1"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6036,7 +6036,7 @@ dependencies = [
 [[package]]
 name = "spl-record"
 version = "0.3.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "num-derive",
@@ -6070,7 +6070,7 @@ dependencies = [
 [[package]]
 name = "spl-tlv-account-resolution"
 version = "0.9.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "num-derive",
@@ -6106,7 +6106,7 @@ dependencies = [
 [[package]]
 name = "spl-token"
 version = "7.0.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6144,7 +6144,7 @@ dependencies = [
 [[package]]
 name = "spl-token-2022"
 version = "6.0.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6171,7 +6171,7 @@ dependencies = [
 [[package]]
 name = "spl-token-client"
 version = "0.13.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "async-trait",
  "bincode",
@@ -6201,7 +6201,7 @@ dependencies = [
 [[package]]
 name = "spl-token-confidential-transfer-ciphertext-arithmetic"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "base64 0.22.1",
  "bytemuck",
@@ -6212,7 +6212,7 @@ dependencies = [
 [[package]]
 name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "solana-curve25519",
@@ -6225,7 +6225,7 @@ dependencies = [
 [[package]]
 name = "spl-token-confidential-transfer-proof-generation"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "curve25519-dalek 4.1.3",
  "solana-zk-sdk",
@@ -6248,7 +6248,7 @@ dependencies = [
 [[package]]
 name = "spl-token-group-interface"
 version = "0.5.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "num-derive",
@@ -6280,7 +6280,7 @@ dependencies = [
 [[package]]
 name = "spl-token-metadata-interface"
 version = "0.6.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "borsh 1.5.3",
  "num-derive",
@@ -6316,7 +6316,7 @@ dependencies = [
 [[package]]
 name = "spl-transfer-hook-interface"
 version = "0.9.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6353,7 +6353,7 @@ dependencies = [
 [[package]]
 name = "spl-type-length-value"
 version = "0.7.0"
-source = "git+https://github.com/solana-labs/solana-program-library#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
 dependencies = [
  "bytemuck",
  "num-derive",

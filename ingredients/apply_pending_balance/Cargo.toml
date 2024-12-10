@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 keypair_utils = { path = "../../utils" }
-solana-sdk = "2.1.2"
-spl-token-2022 = { git = "https://github.com/solana-labs/solana-program-library" }
-spl-token-client = { git = "https://github.com/solana-labs/solana-program-library" }
-spl-associated-token-account = { git = "https://github.com/solana-labs/solana-program-library" }
+solana-sdk = { workspace = true }
+spl-token-2022 = { workspace = true }
+spl-token-client = { workspace = true }
+spl-associated-token-account = { workspace = true }

@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { workspace = true }
 keypair_utils = { path = "../../utils" }
-spl-token-2022 = { git = "https://github.com/solana-labs/solana-program-library" }
-spl-associated-token-account = { git = "https://github.com/solana-labs/solana-program-library" }
-solana-sdk = "2.1.2"
-spl-token-confidential-transfer-proof-extraction = { git = "https://github.com/solana-labs/solana-program-library" }
+spl-token-2022 = { workspace = true }
+spl-associated-token-account = { workspace = true }
+solana-sdk = { workspace = true }
+spl-token-confidential-transfer-proof-extraction = { workspace = true }
