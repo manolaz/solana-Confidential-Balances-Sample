@@ -3190,6 +3190,7 @@ dependencies = [
  "keypair_utils",
  "mint_tokens",
  "setup_mint",
+ "setup_mint_confidential",
  "setup_participants",
  "setup_token_account",
  "solana-sdk",
@@ -3698,6 +3699,12 @@ dependencies = [
 [[package]]
 name = "setup_mint_confidential"
 version = "0.1.0"
+dependencies = [
+ "keypair_utils",
+ "solana-sdk",
+ "spl-token-2022 6.0.0",
+ "spl-token-client",
+]
 
 [[package]]
 name = "setup_participants"
