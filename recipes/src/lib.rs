@@ -30,6 +30,11 @@ mod recipe {
         // Step 2. Create mint
         setup_mint_confidential::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;
 
+        // Step 3. Setup token account for sender
+        setup_token_account::setup_token_account(&sender_keypair).await?;
+
+        // Step 4. Confidentially mint tokens
+        mint_tokens::go_with_confidential_mintburn(&absolute_mint_authority, &sender_keypair.pubkey(), 100_00, &auditor_elgamal_keypair).await?;
 
         Ok(())
     }
@@ -54,7 +59,7 @@ mod recipe {
         setup_token_account::setup_token_account(&sender_keypair).await?;
 
         // Step 4. Mint tokens
-        mint_tokens::mint_tokens(&absolute_mint_authority, &sender_keypair.pubkey(), 100_00).await?;
+        mint_tokens::go(&absolute_mint_authority, &sender_keypair.pubkey(), 100_00).await?;
 
         // Step 5. Deposit tokens
         deposit_tokens::deposit_tokens(50_00, &sender_keypair).await?;

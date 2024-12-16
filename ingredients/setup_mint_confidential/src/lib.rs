@@ -54,14 +54,12 @@ pub async fn create_mint(
     }
     .instruction(&spl_token_2022::id(), &mint.pubkey())?;
 
-
-    let supply_aes_key = AeKey::new_rand();
     let pod_auditor_elgamal_keypair: PodElGamalPubkey = auditor_elgamal_keypair.pubkey_owned().into();
     let extension_mintburn_init_instruction= confidential_mint_burn::instruction::initialize_mint(
         &spl_token_2022::id(),
         &mint.pubkey(),
         pod_auditor_elgamal_keypair,
-        supply_aes_key.encrypt(0).into(),
+        AeKey::new_rand().encrypt(0).into(),
     )?;
 
     // Initialize the mint account

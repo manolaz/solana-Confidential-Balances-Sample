@@ -8,3 +8,7 @@ keypair_utils = { path = "../../utils" }
 solana-sdk = { workspace = true }
 spl-token-2022 = { workspace = true }
 spl-associated-token-account = { workspace = true }
+
+# For Confidential MintBurn
+spl-token-confidential-transfer-proof-extraction = { workspace = true }
+solana-zk-sdk = { workspace = true }
