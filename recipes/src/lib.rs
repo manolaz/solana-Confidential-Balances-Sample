@@ -23,9 +23,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&sender_keypair.pubkey()).await?;
-        setup_participants::setup_basic_participant(&recipient_keypair.pubkey()).await?;
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey()).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
+        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
 
         // Step 2. Create mint
         setup_mint_confidential::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;
@@ -48,9 +48,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&sender_keypair.pubkey()).await?;
-        setup_participants::setup_basic_participant(&recipient_keypair.pubkey()).await?;
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey()).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
+        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
 
         // Step 2. Create mint
         setup_mint::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;

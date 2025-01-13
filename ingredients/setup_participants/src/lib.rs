@@ -1,16 +1,32 @@
 use {
     keypair_utils::get_rpc_client,
     solana_sdk::{
-        native_token::LAMPORTS_PER_SOL, pubkey::Pubkey
+        native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::Keypair
     },
     std::error::Error,
 };
 
-pub async fn setup_basic_participant(participant_pubkey: &Pubkey) -> Result<(), Box<dyn Error>> {
+pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keypair: Option<&Keypair>) -> Result<(), Box<dyn Error>> {
 
     let client = get_rpc_client()?;
 
-    client.request_airdrop(&participant_pubkey, LAMPORTS_PER_SOL)?;
+    match fee_payer_keypair {
+        Some(keypair) => {
+            let recent_blockhash = client.get_latest_blockhash()?;
+            let tx = solana_sdk::system_transaction::transfer(
+                keypair,
+                participant_pubkey,
+                LAMPORTS_PER_SOL / 2,
+                recent_blockhash,
+            );
+            client.send_and_confirm_transaction(&tx)?;
+        }
+        None => {
+            if client.request_airdrop(&participant_pubkey, 2 * LAMPORTS_PER_SOL).is_err() {
+                println!("Failed to request airdrop. Ensure the fee payer account has sufficient SOL.");
+            }
+        }
+    }
 
     //Hack: To await airdrop settlement. Refactor to use async/await with appropriate commitment.
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -25,11 +41,11 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_setup_basic_participant() -> Result<(), Box<dyn Error>> {
         let participant_keypair = get_or_create_keypair("SOLO_TEST_participant_keypair")?;
 
-        setup_basic_participant(&participant_keypair.pubkey()).await?;
+        setup_basic_participant(&participant_keypair.pubkey(), None).await?;
         Ok(())
     }
 }
