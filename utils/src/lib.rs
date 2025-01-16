@@ -2,6 +2,7 @@ use solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signer::keypair::Keypair;
+use solana_sdk::signer::Signer;
 use solana_zk_sdk::encryption::elgamal::{ElGamalKeypair, ElGamalSecretKey};
 use std::env;
 use std::error::Error;
@@ -39,6 +40,17 @@ pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Err
         }
     }
 }
+pub fn get_turnkey_signer(private_key_id_env: &str, public_key_env: &str) -> Result<Box<dyn Signer>, Box<dyn Error>> {
+    let signer = tk_rs::BlockingTurnkeySigner::new(
+        dotenvy::var("TURNKEY_API_PUBLIC_KEY").unwrap(),
+        dotenvy::var("TURNKEY_API_PRIVATE_KEY").unwrap(),
+        dotenvy::var("TURNKEY_ORGANIZATION_ID").unwrap(),
+        dotenvy::var(private_key_id_env).unwrap(),
+        dotenvy::var(public_key_env).unwrap(),
+    )?;
+    Ok(Box::new(signer))
+}
+
 
 pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypair, Box<dyn Error>> {
     dotenvy::from_filename_override(ENV_FILE_PATH).ok();

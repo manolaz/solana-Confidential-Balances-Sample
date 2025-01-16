@@ -4,7 +4,7 @@ mod recipe {
 
     use apply_pending_balance;
     use deposit_tokens;
-    use keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal};
+    use keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, get_turnkey_signer};
     use mint_tokens;
     use setup_mint;
     use setup_mint_confidential;
@@ -81,6 +81,32 @@ mod recipe {
 
         // Step 11. Auditor asserts last transfer amount
         global_auditor_assert::last_transfer_amount(50_00, &auditor_elgamal_keypair).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+    async fn basic_transfer_recipe_turnkey() -> Result<(), String> {
+        tokio::task::spawn_blocking(move || -> Result<(), String> {
+            let sender_signer = get_turnkey_signer(
+                "TURNKEY_SENDER_PRIVATE_KEY_ID",
+                "TURNKEY_SENDER_PUBLIC_KEY",
+            ).map_err(|e| e.to_string())?;
+
+            // let recipient_keypair = get_or_create_keypair("recipient_keypair")
+            //     .map_err(|e| e.to_string())?;
+            // let fee_payer_keypair = get_or_create_keypair("fee_payer_keypair")
+            //     .map_err(|e| e.to_string())?;
+            // let auditor_elgamal_keypair = get_or_create_keypair_elgamal("auditor_elgamal")
+            //     .map_err(|e| e.to_string())?;
+            // let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")
+            //     .map_err(|e| e.to_string())?;
+
+            let elgamal_keypair = solana_zk_sdk::encryption::elgamal::ElGamalKeypair::new_from_signer(&sender_signer, &sender_signer.pubkey().to_bytes()).unwrap();
+            Ok(())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
 
         Ok(())
     }

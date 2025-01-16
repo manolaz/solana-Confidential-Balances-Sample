@@ -10,3 +10,4 @@ serde_json = { workspace = true }
 solana-zk-sdk = { workspace = true }
 solana-client = { workspace = true }
 dotenvy = { workspace = true }
+tk-rs = { workspace = true }

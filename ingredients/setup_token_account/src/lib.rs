@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use keypair_utils::{get_or_create_keypair, get_rpc_client};
-use solana_sdk::{signature::Keypair, signer::Signer, transaction::Transaction};
+use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
@@ -16,7 +16,7 @@ use spl_token_2022::{
 };
 use spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation};
 
-pub async fn setup_token_account(token_account_authority: &Keypair) -> Result<(), Box<dyn Error>> {
+pub async fn setup_token_account(token_account_authority: &dyn Signer) -> Result<(), Box<dyn Error>> {
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let fee_payer_keypair = get_or_create_keypair("fee_payer_keypair")?;
@@ -98,7 +98,7 @@ pub async fn setup_token_account(token_account_authority: &Keypair) -> Result<()
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
         Some(&fee_payer_keypair.pubkey()),
-        &[&token_account_authority, &fee_payer_keypair],
+        &[&token_account_authority, &fee_payer_keypair as &dyn Signer],
         recent_blockhash,
     );
 
