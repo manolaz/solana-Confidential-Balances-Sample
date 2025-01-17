@@ -3,7 +3,7 @@ use std::{error::Error, sync::Arc};
 use keypair_utils::{
     get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value,
 };
-use solana_sdk::{signature::Keypair, signer::Signer, transaction::Transaction};
+use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     error::TokenError,

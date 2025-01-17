@@ -1,6 +1,3 @@
-use solana_sdk::signer::Signer;
-use solana_zk_sdk::encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair};
-
 #[cfg(test)]
 mod recipe {
     use std::error::Error;
@@ -8,15 +5,13 @@ mod recipe {
 
     use apply_pending_balance;
     use deposit_tokens;
-    use keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal, get_turnkey_signer, tokio_spawn_blocking_turnkey_signer_keys};
+    use keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal};
     use mint_tokens;
     use setup_mint;
     use setup_mint_confidential;
     use setup_participants;
     use setup_token_account;
     use solana_sdk::signer::Signer;
-    use solana_zk_sdk::encryption::elgamal::ElGamalKeypair;
-    use solana_zk_sdk::encryption::auth_encryption::AeKey;
     use transfer;
     use withdraw_tokens;
 
