@@ -21,7 +21,7 @@ use spl_token_client::{
 };
 
 pub async fn apply_pending_balance(
-    token_account_authority: &Box<dyn Signer + Send>
+    token_account_authority: &dyn Signer
 ) -> Result<(), Box<dyn Error>> {
     let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
