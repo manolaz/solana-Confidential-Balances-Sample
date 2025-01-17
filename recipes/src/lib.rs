@@ -91,8 +91,8 @@ mod recipe {
 
         let (
             sender_signer,
-            sender_aes_key,
-            sender_elgamal_keypair
+            _sender_aes_key,
+            _sender_elgamal_keypair
         ) = keypair_utils::get_turnkey_signers_from_env(
             "TURNKEY_SENDER_PRIVATE_KEY_ID",
             "TURNKEY_SENDER_PUBLIC_KEY"
@@ -100,8 +100,8 @@ mod recipe {
 
         let (
             recipient_signer,
-            recipient_aes_key,
-            recipient_elgamal_keypair
+            _recipient_aes_key,
+            _recipient_elgamal_keypair
         ) = keypair_utils::get_turnkey_signers_from_env(
             "TURNKEY_RECEIVER_PRIVATE_KEY_ID",
             "TURNKEY_RECEIVER_PUBLIC_KEY"

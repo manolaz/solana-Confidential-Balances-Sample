@@ -42,7 +42,7 @@ pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Err
     }
 }
 pub fn get_turnkey_signer(private_key_id_env: &str, public_key_env: &str) -> Result<Box<dyn Signer + Send>, Box<dyn Error>> {
-    let signer = tk_rs::AsyncTurnkeySigner::new(
+    let signer = tk_rs::TurnkeySigner::new(
         dotenvy::var("TURNKEY_API_PUBLIC_KEY").unwrap(),
         dotenvy::var("TURNKEY_API_PRIVATE_KEY").unwrap(),
         dotenvy::var("TURNKEY_ORGANIZATION_ID").unwrap(),
