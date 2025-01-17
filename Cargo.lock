@@ -2423,6 +2423,7 @@ dependencies = [
  "solana-sdk",
  "solana-zk-sdk",
  "tk-rs",
+ "tokio",
 ]
 
 [[package]]

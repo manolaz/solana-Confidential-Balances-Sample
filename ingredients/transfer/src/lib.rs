@@ -38,7 +38,7 @@ use {
     ,
     std::{error::Error, sync::Arc},
 };
-pub async fn with_split_proofs(sender_keypair: &Keypair, recipient_keypair: &Keypair, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
+pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let sender_associated_token_address: Pubkey = get_associated_token_address_with_program_id(
@@ -60,9 +60,8 @@ pub async fn with_split_proofs(sender_keypair: &Keypair, recipient_keypair: &Key
             &spl_token_2022::id(),
             &mint.pubkey(),
             Some(decimals),
-            Arc::new(Keypair::from_bytes(&sender_keypair.to_bytes()).unwrap())
-            /* ^^^ HACK: Cloning the keypair manually, because it's not supported.
-
+            sender_keypair.clone(),
+            /*
             Can't use the intended separate fee_payer_keypair because I get the following error:
             Client(Error { 
                 request: Some(SendTransaction), 

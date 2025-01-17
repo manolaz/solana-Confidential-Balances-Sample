@@ -3,6 +3,7 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::signer::Signer;
+use solana_zk_sdk::encryption::auth_encryption::AeKey;
 use solana_zk_sdk::encryption::elgamal::{ElGamalKeypair, ElGamalSecretKey};
 use std::env;
 use std::error::Error;
@@ -40,8 +41,8 @@ pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Err
         }
     }
 }
-pub fn get_turnkey_signer(private_key_id_env: &str, public_key_env: &str) -> Result<Box<dyn Signer>, Box<dyn Error>> {
-    let signer = tk_rs::BlockingTurnkeySigner::new(
+pub fn get_turnkey_signer(private_key_id_env: &str, public_key_env: &str) -> Result<Box<dyn Signer + Send>, Box<dyn Error>> {
+    let signer = tk_rs::AsyncTurnkeySigner::new(
         dotenvy::var("TURNKEY_API_PUBLIC_KEY").unwrap(),
         dotenvy::var("TURNKEY_API_PRIVATE_KEY").unwrap(),
         dotenvy::var("TURNKEY_ORGANIZATION_ID").unwrap(),
@@ -137,4 +138,51 @@ pub fn get_non_blocking_rpc_client() -> Result<NonBlockingRpcClient, Box<dyn Err
         CommitmentConfig::confirmed(),
     );
     Ok(client)
+}
+
+/// Spawns a blocking task to generate both AeKey and ElGamalKeypair from a given signer.
+/// This utility function helps avoid Tokio runtime conflicts by isolating blocking operations.
+pub async fn tokio_spawn_blocking_turnkey_signer_keys(
+    private_key_id_env: &str,
+    public_key_env: &str,
+) -> Result<(Box<dyn Signer + Send>, AeKey, ElGamalKeypair), String> {
+    let private_key_id = private_key_id_env.to_string();
+    let public_key = public_key_env.to_string();
+    
+    tokio::task::spawn_blocking(move || -> Result<(Box<dyn Signer + Send>, AeKey, ElGamalKeypair), String> {
+        let signer = get_turnkey_signer(&private_key_id, &public_key)
+            .map_err(|e| e.to_string())?;
+        
+        let elgamal_keypair = ElGamalKeypair::new_from_signer(&signer, &signer.pubkey().to_bytes())
+            .map_err(|e| e.to_string())?;
+        
+        let aes_key = AeKey::new_from_signer(&signer, &signer.pubkey().to_bytes())
+            .map_err(|e| e.to_string())?;
+        
+        Ok((signer, aes_key, elgamal_keypair))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+pub fn get_turnkey_signers_from_env(
+    private_key_id_env: &str,
+    public_key_env: &str,
+) -> Result<(Box<dyn Signer + Send>, AeKey, ElGamalKeypair), String> {
+    let private_key_id = private_key_id_env.to_string();
+    let public_key = public_key_env.to_string();
+    
+    let signer = get_turnkey_signer(&private_key_id, &public_key)
+        .map_err(|e| e.to_string())?;
+    
+    // let elgamal_keypair = ElGamalKeypair::new_from_signer(&signer, &signer.pubkey().to_bytes())
+    //     .map_err(|e| e.to_string())?;
+    
+    // let aes_key = AeKey::new_from_signer(&signer, &signer.pubkey().to_bytes())
+    //     .map_err(|e| e.to_string())?;
+
+    let elgamal_keypair = ElGamalKeypair::new_rand();
+    let aes_key = AeKey::new_rand();
+    
+    Ok((signer, aes_key, elgamal_keypair))
 }

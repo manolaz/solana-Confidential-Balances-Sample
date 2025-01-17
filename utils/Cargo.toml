@@ -11,3 +11,4 @@ solana-zk-sdk = { workspace = true }
 solana-client = { workspace = true }
 dotenvy = { workspace = true }
 tk-rs = { workspace = true }
+tokio = { workspace = true }

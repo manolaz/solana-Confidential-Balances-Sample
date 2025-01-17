@@ -16,7 +16,9 @@ use spl_token_2022::{
 };
 use spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation};
 
-pub async fn setup_token_account(token_account_authority: &dyn Signer) -> Result<(), Box<dyn Error>> {
+pub async fn setup_token_account(
+    token_account_authority: &dyn Signer
+) -> Result<(), Box<dyn Error>> {
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let fee_payer_keypair = get_or_create_keypair("fee_payer_keypair")?;

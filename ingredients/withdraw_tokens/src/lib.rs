@@ -33,11 +33,11 @@ use {
     std::{error::Error, sync::Arc},
 };
 
-pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) -> Result<(), Box<dyn Error>> {
+pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Signer>) -> Result<(), Box<dyn Error>> {
     let mint = get_or_create_keypair("mint")?;
     let decimals = load_value("mint_decimals")?;
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
-        &recipient_keypair.pubkey(),
+        &recipient_signer.pubkey(),
         &mint.pubkey(),
         &spl_token_2022::id(),
     );
@@ -55,16 +55,16 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) 
             &spl_token_2022::id(),
             &mint.pubkey(),
             Some(decimals),
-            Arc::new(Keypair::from_bytes(&recipient_keypair.to_bytes()).unwrap()),
+            recipient_signer.clone(),
             // ^^^ HACK: Unsafe clone of keypair due to Rust lifetime issues.
         )
     };
 
     let receiver_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes())
+        ElGamalKeypair::new_from_signer(&recipient_signer, &recipient_associated_token_address.to_bytes())
             .unwrap();
     let receiver_aes_key =
-        AeKey::new_from_signer(&recipient_keypair, &recipient_associated_token_address.to_bytes()).unwrap();
+        AeKey::new_from_signer(&recipient_signer, &recipient_associated_token_address.to_bytes()).unwrap();
 
     // Get recipient token account data
     let token_account = token
@@ -78,7 +78,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) 
     let withdraw_account_info = WithdrawAccountInfo::new(extension_data);
 
     // Authority for the withdraw proof account (to close the account)
-    let context_state_authority = &recipient_keypair;
+    let context_state_authority = &recipient_signer;
 
     let equality_proof_context_state_keypair = Keypair::new();
     let equality_proof_context_state_pubkey = equality_proof_context_state_keypair.pubkey();
@@ -139,7 +139,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) 
     match token
         .confidential_transfer_withdraw(
             &recipient_associated_token_address,
-            &recipient_keypair.pubkey(),
+            &recipient_signer.pubkey(),
             Some(&ProofAccount::ContextAccount(
                 equality_proof_context_state_pubkey,
             )),
@@ -151,7 +151,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_keypair: &Keypair) 
             Some(withdraw_account_info),
             &receiver_elgamal_keypair,
             &receiver_aes_key,
-            &[&recipient_keypair],
+            &[&recipient_signer],
         )
         .await
     {

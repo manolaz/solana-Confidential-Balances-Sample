@@ -20,7 +20,9 @@ use spl_token_client::{
     token::Token,
 };
 
-pub async fn apply_pending_balance(token_account_authority: &Keypair) -> Result<(), Box<dyn Error>> {
+pub async fn apply_pending_balance(
+    token_account_authority: &Box<dyn Signer + Send>
+) -> Result<(), Box<dyn Error>> {
     let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
@@ -37,7 +39,7 @@ pub async fn apply_pending_balance(token_account_authority: &Keypair) -> Result<
             .unwrap();
     let sender_aes_key =
         AeKey::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes()).unwrap();
-
+    
     // The "pending" balance must be applied to "available" balance before it can be transferred
 
     // A "non-blocking" RPC client (for async calls)
@@ -93,7 +95,7 @@ pub async fn apply_pending_balance(token_account_authority: &Keypair) -> Result<
     let transaction = Transaction::new_signed_with_payer(
         &[apply_pending_balance_instruction],
         Some(&fee_payer_keypair.pubkey()),
-        &[&fee_payer_keypair, token_account_authority],
+        &[&token_account_authority, &fee_payer_keypair as &dyn Signer],
         recent_blockhash,
     );
 
