@@ -4,7 +4,7 @@
 - `solana-cli` v2.1.7
 
 ## Environment Setup
-Use the `.env.example` file to create a `.env` file.
+Use the [.env.example](../.env.example) file to create a `.env` file.
 This is the bare minimum setup to run the recipes.
 
 Note: The `.env` file will be overwritten during test runs to save generated data allowing you to re-run recipes without re-generating data.
