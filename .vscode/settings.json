@@ -19,5 +19,4 @@
         "titleBar.inactiveForeground": "#e7e7e799"
     },
     "peacock.color": "#d7431f",
-    "rust-analyzer.runnables.extraArgs": ["--nocapture"]
 }

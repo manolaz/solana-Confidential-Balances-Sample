@@ -12,3 +12,6 @@ solana-client = { workspace = true }
 dotenvy = { workspace = true }
 tk-rs = { workspace = true }
 tokio = { workspace = true }
+google-cloud-kms = { workspace = true }
+base64 = { workspace = true }
+bs58 = { workspace = true }

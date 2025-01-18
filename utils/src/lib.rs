@@ -1,3 +1,4 @@
+use gcp::GcpSigner;
 use solana_client::nonblocking::rpc_client::RpcClient as NonBlockingRpcClient;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -11,8 +12,10 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use dotenvy;
 
-const ENV_FILE_PATH: &str = "../.env";
-const RPC_URL: &str = "http://127.0.0.1:8899";
+pub mod gcp;
+
+pub const ENV_FILE_PATH: &str = "../.env";
+pub const RPC_URL: &str = "http://127.0.0.1:8899";
 
 // Get or create a keypair from an .env file
 pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Error>> {
@@ -185,4 +188,13 @@ pub fn get_turnkey_signers_from_env(
     let aes_key = AeKey::new_rand();
     
     Ok((signer, aes_key, elgamal_keypair))
+}
+
+pub async fn get_gcp_signer_from_env(
+    resource_name: &str,
+) -> Result<GcpSigner, Box<dyn Error>> {
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
+
+    let signer = GcpSigner::new(resource_name.to_string()).await?;
+    Ok(signer)
 }
