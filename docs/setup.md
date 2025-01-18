@@ -1,23 +1,13 @@
 # Setup
-At the time of writing, SPL repo contains an undeployed version of Token22 with active developments on confidential transfer extension. To run the sample, and the known [CLI example](https://github.com/solana-labs/solana-program-library/blob/d9a6ee8db65167098b654b300ac23abc08fd8a7d/token/cli/examples/confidential-transfer.sh#L1), you will need to [build the Token22 program from source and deploy it on the solana-test-validator](https://solana.stackexchange.com/questions/10062/errors-when-trying-out-confidential-transfer-token-extension-on-solana-test-vali).
 
 ## Version Requirements
-- `solana-test-validator` v2.0.1
-- `cargo-build-sbf` v0.2.0
+- `solana-cli` v2.1.7
 
-## Validator Setup
+## Environment Setup
+Use the `.env.example` file to create a `.env` file.
+This is the bare minimum setup to run the recipes.
 
-1. `git clone https://github.com/solana-labs/solana-program-library.git`  
-
-1. `cd solana-program-library`
-
-1. `git checkout d2f5144c1650179376cb0e2fad6aa656ffd5749a` (known working version)
-
-1. `cd token/program-2022`
-
-1. `cargo build-sbf --tools-version v1.43`
-
-1. `solana-test-validator -r --bpf-program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb ../../target/deploy/spl_token_2022.so`  
+Note: The `.env` file will be overwritten during test runs to save generated data allowing you to re-run recipes without re-generating data.
   
 ## Test Commands
 
@@ -44,7 +34,7 @@ cargo test -p test-runner recipe::basic_transfer_recipe
 ### Test Output Options
 
 ```bash
-# Show output from successful tests
+# Show log output mid-test
 cargo test -- --nocapture
 
 # Show test execution time

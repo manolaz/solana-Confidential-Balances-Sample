@@ -15,7 +15,6 @@ use dotenvy;
 pub mod gcp;
 
 pub const ENV_FILE_PATH: &str = "../.env";
-pub const RPC_URL: &str = "http://127.0.0.1:8899";
 
 // Get or create a keypair from an .env file
 pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Error>> {
@@ -128,16 +127,20 @@ pub fn load_value<T: serde::de::DeserializeOwned>(variable_name: &str) -> Result
 }
 
 pub fn get_rpc_client() -> Result<RpcClient, Box<dyn Error>> {
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
+
     let client = RpcClient::new_with_commitment(
-        String::from(RPC_URL),
+        String::from(env::var("RPC_URL")?),
         CommitmentConfig::confirmed(),
     );
     Ok(client)
 }
 
-pub fn get_non_blocking_rpc_client() -> Result<NonBlockingRpcClient, Box<dyn Error>> {
+pub fn get_non_blocking_rpc_client() -> Result<NonBlockingRpcClient, Box<dyn Error>> {  
+    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
+
     let client = NonBlockingRpcClient::new_with_commitment(
-        String::from(RPC_URL),
+        String::from(env::var("RPC_URL")?),
         CommitmentConfig::confirmed(),
     );
     Ok(client)
