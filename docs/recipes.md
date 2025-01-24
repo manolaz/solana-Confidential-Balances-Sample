@@ -7,6 +7,10 @@
 
 
 ## [Basic Transfer](../recipes/src/lib.rs#L43)
+### Command:
+```bash
+cargo test --package recipes --lib -- --nocapture recipe::basic_transfer_recipe --exact --show-output
+```
 ### Scenario:
 - Public mint account (without confidential mint/burn extension).  
 - Alice makes an offchain request to the Token Issuer (mint authority) for confidentially redeeming cUSD stablecoins. 
