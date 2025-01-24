@@ -10,6 +10,16 @@
 
 - What does block explorer UX look like for this product?
 
+- Can one user create a confidential token account for another user?
+
+- Considering the encryption flows, how can PDA's interface with confidential tokens? This is a use case for escrows and other DeFi protocols.
+
+- Can we use Jito bundles to batch confidential transfer transactions?
+
+- How can senders & receivers verify confidential transfer transactions when associated context state accounts are closed?
+
+- How can a sender be prompted to sign only once for a confidential transfer (which involves multiple signatures)?
+
 # Issuer
 1. Auditor Rotation & Regulatory Oversight  
    - How frequently does Issuer anticipate rotating auditors or key custodians?  
@@ -32,8 +42,8 @@
    - Would Issuer use a single global auditor key or prefer multiple auditor keys for different jurisdictions?  
    - Does Issuer require a nuanced approach where certain transfers remain publicly visible while others are confidential?  
 
-5. Operational Scale & Performance  321180379
-   - How many transactions per second does Issuer anticipate for $PYUSD if confidential transfers are enabled?  
+5. Operational Scale & Performance
+   - How many transactions per second does an Issuer anticipate if confidential transfers are enabled?  
    - Are there concerns about transaction sizes, or the additional overhead of proof accounts, for high-volume usage?  
    - What internal performance metrics or service-level agreements (SLAs) does Issuer expect to meet?  
 
