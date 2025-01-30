@@ -58,6 +58,7 @@ There are two ways to try your first confidential transfer:
     - Minimal setup and requires no code to execute.
     - Provides all basic functionality to operate a confidential token.
     - Fixed set of operations from the CLI menu.
+    - Use [this provided shell script](https://github.com/solana-program/token-2022/blob/main/clients/cli/examples/confidential-transfer.sh) to execute an end-to-end confidential transfer.
 
 - Intermediate: [Cookbook Basic Transfer Example Recipe](recipes.md#L12)
     - Requires the Solana development environment installation.
