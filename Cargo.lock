@@ -7412,6 +7412,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tk-rs"
 version = "0.1.0"
+source = "git+https://github.com/kilogold/tk-rs.git#5ebfdbb230d527821e2958948c1a0cce17e98278"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

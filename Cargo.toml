@@ -28,7 +28,7 @@ spl-token-confidential-transfer-proof-generation = { git = "https://github.com/s
 spl-token-confidential-transfer-proof-extraction = { git = "https://github.com/solana-labs/solana-program-library.git", rev = "224a96b164357a221c7f7dae5e348f9c0f7a73da" }
 
 # Other dependencies
-tk-rs = { path = "/Users/kbonilla/Projects/Solana/cookbook/tk-rs" }
+tk-rs = { git = "https://github.com/kilogold/tk-rs.git" }
 tokio = { version = "1.42.0", features = ["full"] }
 serde = "1.0.215"
 serde_json = "1.0.1"
