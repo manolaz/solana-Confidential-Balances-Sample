@@ -1,15 +1,11 @@
+use solana_zk_sdk::zk_elgamal_proof_program;
+use spl_token_client::{client::{self, ProgramClient, SendTransaction, SimulateTransaction}, token::TokenError};
 
 use {
-    keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, record_value},
-    solana_sdk::{
-        pubkey::Pubkey,
-        signature::{Keypair, Signer},
-        transaction::Transaction,
-    },
-    spl_associated_token_account::
-        get_associated_token_address_with_program_id
-    ,
-    spl_token_2022::{
+    jito_sdk_rust::JitoJsonRpcSDK, keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, record_value}, solana_sdk::{
+        pubkey::Pubkey, signature::{Keypair, Signer}, system_instruction, transaction::Transaction
+    }, spl_associated_token_account::
+        get_associated_token_address_with_program_id, spl_token_2022::{
         extension::{
             confidential_transfer::{
                 account_info::
@@ -28,18 +24,25 @@ use {
             zk_elgamal_proof_program::instruction::{close_context_state, ContextStateInfo},
         },
         state::{Account, Mint},
-    },
-    spl_token_client::{
+    }, spl_token_client::{
         client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ProofAccount, ProofAccountWithCiphertext, Token},
-    },
-    spl_token_confidential_transfer_proof_generation::
-        transfer::TransferProofData
-    ,
-    std::{error::Error, sync::Arc},
+    }, spl_token_confidential_transfer_proof_generation::
+        transfer::TransferProofData, std::{error::Error, str::FromStr, sync::Arc}
 };
 pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
+    // let jito_sdk = JitoJsonRpcSDK::new("https://testnet.block-engine.jito.wtf/api/v1", None);
+    // let random_tip_account = jito_sdk.get_random_tip_account().await?;
+    // let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
+    // const jito_tip_amount:u64 = 1_000; // 0.000001 SOL
+    // let jito_tip_ix = system_instruction::transfer(
+    //     &sender_keypair.pubkey(),
+    //     &jito_tip_account,
+    //     jito_tip_amount,
+    // );
+
     let client = get_rpc_client()?;
+
     let mint = get_or_create_keypair("mint")?;
     let sender_associated_token_address: Pubkey = get_associated_token_address_with_program_id(
         &sender_keypair.pubkey(),
@@ -51,7 +54,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     let token = {
         let rpc_client = get_non_blocking_rpc_client()?;
 
-        let program_client =
+        let program_client: ProgramRpcClient<ProgramRpcClientSendTransaction> =
             ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
 
         // Create a "token" client, to use various helper functions for Token Extensions
@@ -163,36 +166,17 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     // Create 3 proofs ------------------------------------------------------
 
     // Range Proof ------------------------------------------------------------------------------
-
-    //TODO: splitting proofs into separate txns means we don't get the signature of the txn that creates the proof accounts
-    // It checks if failed, but we don't know which txn failed.
-    match token
-        .confidential_transfer_create_context_state_account(
-            &range_proof_context_state_account.pubkey(),
-            &context_state_authority.pubkey(),
-            &range_proof_data,
-            true, // Sent as separate transactions because proof instruction is too large.
-            &[&range_proof_context_state_account],
-        )
-        .await
-    {
-        Ok(RpcClientResponse::Signature(signature)) => {
-            println!("\nCreate Range Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
-        }
-        Ok(RpcClientResponse::Transaction(_)) => {
-            panic!("Unexpected result from create range proof context state account.");
-        }
-        Ok(RpcClientResponse::Simulation(_)) => {
-            panic!("Unexpected result from create range proof context state account.");
-        }
-        Err(e) => {
-            panic!(
-                "Unexpected result from create range proof context state account: {:?}",
-                e
-            );
-        }
-    }
-
+    let range_proof_txns = get_zk_proof_context_state_account_creation_transactions(
+        &sender_keypair,
+        &range_proof_context_state_account,
+        &context_state_authority.pubkey(),
+        &range_proof_data,
+        true,
+    )?;
+    assert!(range_proof_txns.len() == 2);
+    client.send_and_confirm_transaction(&range_proof_txns[0])?;
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    client.send_and_confirm_transaction(&range_proof_txns[1])?;
     // Equality Proof ---------------------------------------------------------------------------
 
     match token
@@ -327,4 +311,71 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     );
 
     Ok(())
+}
+
+/// Refactored version of spl_token_client::token::Token::confidential_transfer_create_context_state_account().
+/// Instead of sending transactions internally, this function returns the transactions to be sent externally.
+fn get_zk_proof_context_state_account_creation_transactions<
+ZK: bytemuck::Pod + zk_elgamal_proof_program::proof_data::ZkProofData<U>,
+U: bytemuck::Pod,
+>(
+    fee_payer_signer: &dyn Signer,
+    context_state_account_signer: &dyn Signer,
+    context_state_authority: &Pubkey,
+    proof_data: &ZK,
+    split_account_creation_and_proof_verification: bool,
+) -> Result<Vec<Transaction>, Box<dyn Error>> {
+    let context_state_account_pubkey = context_state_account_signer.pubkey();
+    let instruction_type = spl_token_confidential_transfer_proof_extraction::instruction::zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
+
+    let space = size_of::<zk_elgamal_proof_program::state::ProofContextState<U>>();
+
+    let client = get_rpc_client()?;
+
+    let rent = client.get_minimum_balance_for_rent_exemption(space)?;
+
+    let context_state_info = ContextStateInfo {
+        context_state_account: &context_state_account_pubkey,
+        context_state_authority: context_state_authority,
+    };
+
+    let blockhash = client.get_latest_blockhash()?;
+
+    let instructions = [
+        system_instruction::create_account(
+            &fee_payer_signer.pubkey(),
+            &context_state_account_pubkey,
+            rent,
+            space as u64,
+            &zk_elgamal_proof_program::id(),
+        ),
+        instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
+    ];
+    // Some proof instructions are right at the transaction size limit, but in the
+    // future it might be able to support the transfer too
+    if split_account_creation_and_proof_verification {
+        Ok(vec![
+            Transaction::new_signed_with_payer(
+                &[instructions[0].clone()],
+                Some(&fee_payer_signer.pubkey()),
+                &[&fee_payer_signer, &context_state_account_signer],
+                blockhash
+            ),
+            Transaction::new_signed_with_payer(
+                &[instructions[1].clone()],
+                Some(&fee_payer_signer.pubkey()),
+                &[&fee_payer_signer],
+                blockhash,
+            )
+        ])
+    } else {
+        Ok(vec![
+            Transaction::new_signed_with_payer(
+                &instructions,
+                Some(&fee_payer_signer.pubkey()),
+                &[&fee_payer_signer, &context_state_account_signer],
+                blockhash,
+            )
+        ])
+    }
 }
