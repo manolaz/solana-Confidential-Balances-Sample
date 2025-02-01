@@ -16,6 +16,7 @@ pub async fn create_mint(
     absolute_authority: &Keypair,
     auditor_elgamal_keypair: &ElGamalKeypair,
 ) -> Result<(), Box<dyn Error>> {
+    /* 
     let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
@@ -92,5 +93,6 @@ pub async fn create_mint(
         "\nCreate Mint Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
+    */
     Ok(())
 }

@@ -23,87 +23,87 @@ use spl_token_client::{
 pub async fn apply_pending_balance(
     token_account_authority: &dyn Signer
 ) -> Result<(), Box<dyn Error>> {
-    let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
-    let client = get_rpc_client()?;
-    let mint = get_or_create_keypair("mint")?;
-    let decimals = load_value("mint_decimals")?;
+    // let fee_payer_keypair = Arc::new(get_or_create_keypair("fee_payer_keypair")?);
+    // let client = get_rpc_client()?;
+    // let mint = get_or_create_keypair("mint")?;
+    // let decimals = load_value("mint_decimals")?;
 
-    let token_account_pubkey = get_associated_token_address_with_program_id(
-        &token_account_authority.pubkey(),
-        &mint.pubkey(),
-        &spl_token_2022::id(),
-    );
+    // let token_account_pubkey = get_associated_token_address_with_program_id(
+    //     &token_account_authority.pubkey(),
+    //     &mint.pubkey(),
+    //     &spl_token_2022::id(),
+    // );
     
-    let sender_elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes())
-            .unwrap();
-    let sender_aes_key =
-        AeKey::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes()).unwrap();
+    // let sender_elgamal_keypair =
+    //     ElGamalKeypair::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes())
+    //         .unwrap();
+    // let sender_aes_key =
+    //     AeKey::new_from_signer(&token_account_authority, &token_account_pubkey.to_bytes()).unwrap();
     
-    // The "pending" balance must be applied to "available" balance before it can be transferred
+    // // The "pending" balance must be applied to "available" balance before it can be transferred
 
-    // A "non-blocking" RPC client (for async calls)
-    let token = {
-        let rpc_client = get_non_blocking_rpc_client()?;
+    // // A "non-blocking" RPC client (for async calls)
+    // let token = {
+    //     let rpc_client = get_non_blocking_rpc_client()?;
 
-        let program_client =
-            ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
+    //     let program_client =
+    //         ProgramRpcClient::new(Arc::new(rpc_client), ProgramRpcClientSendTransaction);
 
-        // Create a "token" client, to use various helper functions for Token Extensions
-        Token::new(
-            Arc::new(program_client),
-            &spl_token_2022::id(),
-            &mint.pubkey(),
-            Some(decimals),
-            fee_payer_keypair.clone(),
-        )
-    };
+    //     // Create a "token" client, to use various helper functions for Token Extensions
+    //     Token::new(
+    //         Arc::new(program_client),
+    //         &spl_token_2022::id(),
+    //         &mint.pubkey(),
+    //         Some(decimals),
+    //         fee_payer_keypair.clone(),
+    //     )
+    // };
 
-    // Get sender token account data
-    let token_account_info = token
-        .get_account_info(&token_account_pubkey)
-        .await?;
+    // // Get sender token account data
+    // let token_account_info = token
+    //     .get_account_info(&token_account_pubkey)
+    //     .await?;
 
-    // Unpack the ConfidentialTransferAccount extension portion of the token account data
-    let confidential_transfer_account =
-        token_account_info.get_extension::<ConfidentialTransferAccount>()?;
+    // // Unpack the ConfidentialTransferAccount extension portion of the token account data
+    // let confidential_transfer_account =
+    //     token_account_info.get_extension::<ConfidentialTransferAccount>()?;
 
-    // ConfidentialTransferAccount extension information needed to construct an `ApplyPendingBalance` instruction.
-    let apply_pending_balance_account_info =
-        ApplyPendingBalanceAccountInfo::new(confidential_transfer_account);
+    // // ConfidentialTransferAccount extension information needed to construct an `ApplyPendingBalance` instruction.
+    // let apply_pending_balance_account_info =
+    //     ApplyPendingBalanceAccountInfo::new(confidential_transfer_account);
 
-    // Return the number of times the pending balance has been credited
-    let expected_pending_balance_credit_counter =
-        apply_pending_balance_account_info.pending_balance_credit_counter();
+    // // Return the number of times the pending balance has been credited
+    // let expected_pending_balance_credit_counter =
+    //     apply_pending_balance_account_info.pending_balance_credit_counter();
 
-    // Update the decryptable available balance (add pending balance to available balance)
-    let new_decryptable_available_balance = apply_pending_balance_account_info
-        .new_decryptable_available_balance(&sender_elgamal_keypair.secret(), &sender_aes_key)
-        .map_err(|_| TokenError::AccountDecryption)?;
+    // // Update the decryptable available balance (add pending balance to available balance)
+    // let new_decryptable_available_balance = apply_pending_balance_account_info
+    //     .new_decryptable_available_balance(&sender_elgamal_keypair.secret(), &sender_aes_key)
+    //     .map_err(|_| TokenError::AccountDecryption)?;
 
-    // Create a `ApplyPendingBalance` instruction
-    let apply_pending_balance_instruction = instruction::apply_pending_balance(
-        &spl_token_2022::id(),
-        &token_account_pubkey,         // Token account
-        expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
-        new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
-        &token_account_authority.pubkey(),                       // Token account owner
-        &[&token_account_authority.pubkey()],                    // Additional signers
-    )?;
+    // // Create a `ApplyPendingBalance` instruction
+    // let apply_pending_balance_instruction = instruction::apply_pending_balance(
+    //     &spl_token_2022::id(),
+    //     &token_account_pubkey,         // Token account
+    //     expected_pending_balance_credit_counter, // Expected number of times the pending balance has been credited
+    //     new_decryptable_available_balance.into(), // Cipher text of the new decryptable available balance
+    //     &token_account_authority.pubkey(),                       // Token account owner
+    //     &[&token_account_authority.pubkey()],                    // Additional signers
+    // )?;
 
-    let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
-        &[apply_pending_balance_instruction],
-        Some(&fee_payer_keypair.pubkey()),
-        &[&token_account_authority, &fee_payer_keypair as &dyn Signer],
-        recent_blockhash,
-    );
+    // let recent_blockhash = client.get_latest_blockhash()?;
+    // let transaction = Transaction::new_signed_with_payer(
+    //     &[apply_pending_balance_instruction],
+    //     Some(&fee_payer_keypair.pubkey()),
+    //     &[&token_account_authority, &fee_payer_keypair as &dyn Signer],
+    //     recent_blockhash,
+    // );
 
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
+    // let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nApply Pending Balance: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    // println!(
+    //     "\nApply Pending Balance: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+    //     transaction_signature
+    // );
     Ok(())
 }

@@ -56,6 +56,7 @@ async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
 }
 
 pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
+    /*
     let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
     let random_tip_account = jito_sdk.get_random_tip_account().await?;
     let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
@@ -362,7 +363,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
-
+*/
     Ok(())
 }
 
