@@ -54,8 +54,7 @@ async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
     Ok(jito_tip_amount)
 }
 
-pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
-    
+pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {   
     let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
     let random_tip_account = jito_sdk.get_random_tip_account().await?;
     let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
@@ -66,9 +65,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         &jito_tip_account,
         jito_tip_amount,
     );
-
     
-
     let client = get_rpc_client()?;
 
     let mint = get_or_create_keypair("mint")?;
@@ -232,8 +229,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
             &ciphertext_validity_proof_context_state_account as &dyn Signer],
         client.get_latest_blockhash()?,
     );
-    let serialized_tx1 = bs58::encode(bincode::serialize(&tx1)?).into_string();
-
+    
     // Transaction 2: Encode Range Proof on its own (because it's the largest).
     let tx2 = Transaction::new_signed_with_payer(
         &[range_verify_ix],
@@ -241,7 +237,6 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         &[&sender_keypair],
         client.get_latest_blockhash()?,
     );
-    let serialized_tx2 = bs58::encode(bincode::serialize(&tx2)?).into_string();
 
     // Transaction 3: Encode all remaining proofs.
     let tx3 = Transaction::new_signed_with_payer(
@@ -250,25 +245,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         &[&sender_keypair],
         client.get_latest_blockhash()?,
     );
-    let serialized_tx3 = bs58::encode(bincode::serialize(&tx3)?).into_string();
-
-    let tx_bundle = json!([serialized_tx1, serialized_tx2, serialized_tx3]);
     
-    // UUID for the bundle
-    let uuid = None;
-
-    // Send bundle using Jito SDK
-    println!("Sending bundle with X transactions...");
-    let response = jito_sdk.send_bundle(Some(tx_bundle), uuid).await?;
-
-    // Extract bundle UUID from response
-    let bundle_uuid = response["result"]
-        .as_str()
-        .ok_or("Failed to get bundle UUID from response")?;
-    println!("Bundle sent with UUID: {}", bundle_uuid);
-
-    confirm_bundle_status(&jito_sdk, &bundle_uuid).await?;
-
     // Transaction 4: Execute transfer (below)
     // Transfer with Split Proofs -------------------------------------------
 
@@ -283,33 +260,23 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         ciphertext_hi: ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi,
     };
 
-    match token
-        .confidential_transfer_transfer(
-            &sender_associated_token_address,
-            &recipient_associated_token_address,
-            &sender_keypair.pubkey(),
-            Some(&equality_proof_context_proof_account),
-            Some(&ciphertext_validity_proof_account_with_ciphertext),
-            Some(&range_proof_context_proof_account),
-            confidential_transfer_amount,
-            Some(sender_transfer_account_info),
-            &sender_elgamal_keypair,
-            &sender_aes_key,
-            &recipient_elgamal_pubkey,
-            Some(&auditor_elgamal_pubkey),
-            &[&sender_keypair],
-        )
-        .await
-    {
-        Ok(RpcClientResponse::Signature(signature)) => {
-            record_value("last_confidential_transfer_signature", signature.to_string())?;
-            println!("\nTransfer with Split Proofs: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
-        }
-        _ => {
-            panic!("Unexpected result from transfer with split proofs");
-        }
-    }
+    let tx4 = token.confidential_transfer_transfer_tx(
+        &sender_associated_token_address,
+        &recipient_associated_token_address,
+        &sender_keypair.pubkey(),
+        Some(&equality_proof_context_proof_account),
+        Some(&ciphertext_validity_proof_account_with_ciphertext),
+        Some(&range_proof_context_proof_account),
+        confidential_transfer_amount,
+        Some(sender_transfer_account_info),
+        &sender_elgamal_keypair,
+        &sender_aes_key,
+        &recipient_elgamal_pubkey,
+        Some(&auditor_elgamal_pubkey),
+        &[&sender_keypair],
+    ).await?;
 
+    // Transaction 5: (below)
     // Close Proof Accounts --------------------------------------------------
 
     // Authority to close the proof accounts
@@ -345,7 +312,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     );
 
     let recent_blockhash = client.get_latest_blockhash()?;
-    let transaction = Transaction::new_signed_with_payer(
+    let tx5 = Transaction::new_signed_with_payer(
         &[
             close_equality_proof_instruction,
             close_ciphertext_validity_proof_instruction,
@@ -356,12 +323,36 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         recent_blockhash,
     );
 
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
+    {        
+        let serialized_tx1 = bs58::encode(bincode::serialize(&tx1)?).into_string();
+        let serialized_tx2 = bs58::encode(bincode::serialize(&tx2)?).into_string();
+        let serialized_tx3 = bs58::encode(bincode::serialize(&tx3)?).into_string();
+        let serialized_tx4 = bs58::encode(bincode::serialize(&tx4)?).into_string();
+        let serialized_tx5 = bs58::encode(bincode::serialize(&tx5)?).into_string();
+        let tx_bundle = json!([serialized_tx1, serialized_tx2, serialized_tx3, serialized_tx4, serialized_tx5]);
+        // UUID for the bundle
+        let uuid = None;
 
-    println!(
-        "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+        // Send bundle using Jito SDK
+        println!("Sending bundle with X transactions...");
+        let response = jito_sdk.send_bundle(Some(tx_bundle), uuid).await?;
+
+        // Extract bundle UUID from response
+        let bundle_uuid = response["result"]
+            .as_str()
+            .ok_or("Failed to get bundle UUID from response")?;
+        println!("Bundle sent with UUID: {}", bundle_uuid);
+
+        let bundled_signatures = confirm_bundle_status(&jito_sdk, &bundle_uuid).await?;
+
+        record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
+    }
+    
+    // let transaction_signature = client.send_and_confirm_transaction(&tx5)?;
+    // println!(
+    //     "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+    //     transaction_signature
+    // );
 
     Ok(())
 }
@@ -415,7 +406,7 @@ struct BundleStatus {
 
 const MAX_RETRIES: u32 = 30;
 const RETRY_DELAY: Duration = Duration::from_secs(3);
-async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 
     for attempt in 1..=MAX_RETRIES {
         println!("Checking bundle status (attempt {}/{})", attempt, MAX_RETRIES);
@@ -430,7 +421,7 @@ async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> 
                             match status.as_str() {
                                 Some("Landed") => {
                                     println!("Bundle landed on-chain. Checking final status...");
-                                    return check_final_bundle_status(&jito_sdk, bundle_uuid).await;
+                                    return Ok(check_final_bundle_status(&jito_sdk, bundle_uuid).await?);
                                 },
                                 Some("Pending") => {
                                     println!("Bundle is pending. Waiting...");
@@ -472,7 +463,7 @@ async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> 
     Err(format!("Failed to confirm bundle status after {} attempts", MAX_RETRIES).into())
 }
 
-async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 
     for attempt in 1..=MAX_RETRIES {
         println!("Checking final bundle status (attempt {}/{})", attempt, MAX_RETRIES);
@@ -489,7 +480,10 @@ async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str)
                 println!("Bundle finalized on-chain successfully!");
                 check_transaction_error(&bundle_status)?;
                 print_transaction_url(&bundle_status);
-                return Ok(());
+                return match bundle_status.transactions {
+                    Some(transactions) => Ok(transactions),
+                    None => Err("Error retrieving transactions from finalized bundle status".into()),
+                };
             },
             Some(status) => {
                 println!("Unexpected final bundle status: {}. Continuing to poll...", status);

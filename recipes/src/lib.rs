@@ -11,7 +11,7 @@ mod recipe {
     use setup_mint_confidential;
     use setup_participants;
     use setup_token_account;
-    use solana_sdk::signer::Signer;
+    use solana_sdk::{native_token::LAMPORTS_PER_SOL, signer::Signer};
     use transfer;
     use withdraw_tokens;
 
@@ -24,9 +24,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
-        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
-        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None, 2 * LAMPORTS_PER_SOL).await?;
+        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL).await?;
+        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/5).await?;
 
         // Step 2. Create mint
         setup_mint_confidential::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;
@@ -49,9 +49,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
-        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
-        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None, 2 * LAMPORTS_PER_SOL).await?;
+        setup_participants::setup_basic_participant(&sender_keypair.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/2).await?;
+        setup_participants::setup_basic_participant(&recipient_keypair.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/5).await?;
 
         // Step 2. Create mint
         setup_mint::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;
@@ -115,9 +115,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
-        setup_participants::setup_basic_participant(&sender_signer.pubkey(), Some(&fee_payer_keypair)).await?;
-        setup_participants::setup_basic_participant(&recipient_signer.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None, 2 * LAMPORTS_PER_SOL).await?;
+        setup_participants::setup_basic_participant(&sender_signer.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/2).await?;
+        setup_participants::setup_basic_participant(&recipient_signer.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/5).await?;
 
         // Step 2. Create mint
         setup_mint::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;
@@ -166,9 +166,9 @@ mod recipe {
         let absolute_mint_authority = get_or_create_keypair("absolute_mint_authority")?;
 
         // Step 1. Setup participants
-        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None).await?;
-        setup_participants::setup_basic_participant(&sender_signer.pubkey(), Some(&fee_payer_keypair)).await?;
-        setup_participants::setup_basic_participant(&recipient_signer.pubkey(), Some(&fee_payer_keypair)).await?;
+        setup_participants::setup_basic_participant(&fee_payer_keypair.pubkey(), None, 2 * LAMPORTS_PER_SOL).await?;
+        setup_participants::setup_basic_participant(&sender_signer.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/2).await?;
+        setup_participants::setup_basic_participant(&recipient_signer.pubkey(), Some(&fee_payer_keypair), LAMPORTS_PER_SOL/5).await?;
 
         // Step 2. Create mint
         setup_mint::create_mint(&absolute_mint_authority, &auditor_elgamal_keypair).await?;

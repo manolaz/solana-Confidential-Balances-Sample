@@ -6,7 +6,7 @@ use {
     std::error::Error,
 };
 
-pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keypair: Option<&Keypair>) -> Result<(), Box<dyn Error>> {
+pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keypair: Option<&Keypair>, initial_lamports: u64) -> Result<(), Box<dyn Error>> {
 
     let client = get_rpc_client()?;
 
@@ -16,13 +16,13 @@ pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keyp
             let tx = solana_sdk::system_transaction::transfer(
                 keypair,
                 participant_pubkey,
-                LAMPORTS_PER_SOL / 2,
+                initial_lamports,
                 recent_blockhash,
             );
             client.send_and_confirm_transaction(&tx)?;
         }
         None => {
-            if client.request_airdrop(&participant_pubkey, 2 * LAMPORTS_PER_SOL).is_err() {
+            if client.request_airdrop(&participant_pubkey, initial_lamports).is_err() {
                 let current_balance = client.get_balance(&participant_pubkey)?;
                 println!("Failed to request airdrop. Ensure the fee payer account has sufficient SOL.");
                 println!("Current participant balance: {}", current_balance);
@@ -47,7 +47,7 @@ mod tests {
     async fn test_setup_basic_participant() -> Result<(), Box<dyn Error>> {
         let participant_keypair = get_or_create_keypair("SOLO_TEST_participant_keypair")?;
 
-        setup_basic_participant(&participant_keypair.pubkey(), None).await?;
+        setup_basic_participant(&participant_keypair.pubkey(), None, 2 * LAMPORTS_PER_SOL).await?;
         Ok(())
     }
 }
