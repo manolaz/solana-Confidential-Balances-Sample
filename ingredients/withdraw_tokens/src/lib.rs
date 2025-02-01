@@ -112,7 +112,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
-            println!("Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+            println!("\nEquality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         _ => {
             panic!("Unexpected result from create equality proof context state account");
@@ -129,7 +129,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
-            println!("Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+            println!("\nRange Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         _ => {
             panic!("Unexpected result from create range proof context state account");
@@ -157,7 +157,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
-            println!("Withdraw Transaction: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+            println!("\nWithdraw Transaction: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         Ok(RpcClientResponse::Transaction(_)) => {
             panic!("Unexpected result from withdraw: transaction");
@@ -183,7 +183,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
-            println!("Close Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+            println!("\nClose Equality Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         _ => {
             panic!("Unexpected result from close equality proof context state account");
@@ -199,7 +199,7 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
         .await
     {
         Ok(RpcClientResponse::Signature(signature)) => {
-            println!("Close Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
+            println!("\nClose Range Proof Context State Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
         }
         _ => {
             panic!("Unexpected result from close range proof context state account");

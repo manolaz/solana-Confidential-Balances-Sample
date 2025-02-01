@@ -72,7 +72,7 @@ mod recipe {
         setup_token_account::setup_token_account(&recipient_keypair).await?;
 
         // Step 8. Transfer tokens with split proofs
-        transfer::with_split_proofs(sender_keypair.clone(), recipient_keypair.clone(), 50_00).await?;
+        transfer::with_split_proofs(sender_keypair.clone(), recipient_keypair.clone(), 50_00, false).await?;
 
         // Step 9. Apply recipient's pending balance
         apply_pending_balance::apply_pending_balance(&recipient_keypair).await?;
@@ -138,7 +138,7 @@ mod recipe {
         setup_token_account::setup_token_account(&recipient_signer).await?;
 
         // Step 8. Transfer tokens with split proofs
-        transfer::with_split_proofs(sender_signer.clone(), recipient_signer.clone(), 50_00).await?;
+        transfer::with_split_proofs(sender_signer.clone(), recipient_signer.clone(), 50_00, false).await?;
 
         // Step 9. Apply recipient's pending balance
         apply_pending_balance::apply_pending_balance(&recipient_signer).await?;
@@ -189,7 +189,7 @@ mod recipe {
         setup_token_account::setup_token_account(&recipient_signer).await?;
 
         // Step 8. Transfer tokens with split proofs
-        transfer::with_split_proofs(sender_signer.clone(), recipient_signer.clone(), 50_00).await?;
+        transfer::with_split_proofs(sender_signer.clone(), recipient_signer.clone(), 50_00, false).await?;
 
         // Step 9. Apply recipient's pending balance
         apply_pending_balance::apply_pending_balance(&recipient_signer).await?;

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use serde_json::json;
-use solana_sdk::native_token::LAMPORTS_PER_SOL;
+use solana_sdk::{instruction::CompiledInstruction, native_token::LAMPORTS_PER_SOL};
 use solana_zk_sdk::zk_elgamal_proof_program;
 
 use {
@@ -54,18 +54,7 @@ async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
     Ok(jito_tip_amount)
 }
 
-pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {   
-    let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
-    let random_tip_account = jito_sdk.get_random_tip_account().await?;
-    let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
-    let jito_tip_amount:u64 = get_max_jito_tip_amount().await?;
-    println!("jito tip amount lamports: {}", jito_tip_amount);
-    let jito_tip_ix = system_instruction::transfer(
-        &sender_keypair.pubkey(),
-        &jito_tip_account,
-        jito_tip_amount,
-    );
-    
+pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64, use_jito_bundles: bool) -> Result<(), Box<dyn Error>> {   
     let client = get_rpc_client()?;
 
     let mint = get_or_create_keypair("mint")?;
@@ -220,13 +209,14 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     // Transaction 1: Allocate all proof accounts at once.
 
     let tx1 = Transaction::new_signed_with_payer(
-        &[range_create_ix, equality_create_ix, cv_create_ix, jito_tip_ix],
+        &[range_create_ix.clone(), equality_create_ix.clone(), cv_create_ix.clone()],
         Some(&sender_keypair.pubkey()),
         &[
             &sender_keypair, 
             &range_proof_context_state_account as &dyn Signer, 
             &equality_proof_context_state_account as &dyn Signer, 
-            &ciphertext_validity_proof_context_state_account as &dyn Signer],
+            &ciphertext_validity_proof_context_state_account as &dyn Signer
+        ],
         client.get_latest_blockhash()?,
     );
     
@@ -323,7 +313,31 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         recent_blockhash,
     );
 
-    {        
+    if use_jito_bundles {
+        assert!(client.url().contains("testnet") || client.url().contains("mainnet"), "This Jito demo only works on testnet or mainnet (adjust code for custom endpoints)");
+        let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
+        let random_tip_account = jito_sdk.get_random_tip_account().await?;
+        let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
+        let jito_tip_amount:u64 = get_max_jito_tip_amount().await?;
+        println!("jito tip amount lamports: {}", jito_tip_amount);
+        let jito_tip_ix = system_instruction::transfer(
+            &sender_keypair.pubkey(),
+            &jito_tip_account,
+            jito_tip_amount,
+        );
+
+        let tx1 = Transaction::new_signed_with_payer(
+            &[range_create_ix, equality_create_ix, cv_create_ix, jito_tip_ix],
+            Some(&sender_keypair.pubkey()),
+            &[
+                &sender_keypair, 
+                &range_proof_context_state_account as &dyn Signer, 
+                &equality_proof_context_state_account as &dyn Signer, 
+                &ciphertext_validity_proof_context_state_account as &dyn Signer
+            ],
+            client.get_latest_blockhash()?,
+        );
+
         let serialized_tx1 = bs58::encode(bincode::serialize(&tx1)?).into_string();
         let serialized_tx2 = bs58::encode(bincode::serialize(&tx2)?).into_string();
         let serialized_tx3 = bs58::encode(bincode::serialize(&tx3)?).into_string();
@@ -347,12 +361,32 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
 
         record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
     }
-    
-    // let transaction_signature = client.send_and_confirm_transaction(&tx5)?;
-    // println!(
-    //     "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-    //     transaction_signature
-    // );
+    else {
+        println!(
+            "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            client.send_and_confirm_transaction(&tx1)?
+        );
+        println!(
+            "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            client.send_and_confirm_transaction(&tx2)?
+        );
+        println!(
+            "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            client.send_and_confirm_transaction(&tx3)?
+        );
+
+        let signature = client.send_and_confirm_transaction(&tx4)?.to_string();
+        record_value("last_confidential_transfer_signature", &signature)?;
+        println!(
+            "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            signature
+        );
+        
+        println!(
+            "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            client.send_and_confirm_transaction(&tx5)?
+        );
+    }
 
     Ok(())
 }
