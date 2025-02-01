@@ -165,42 +165,74 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
 
     // Create 3 proofs ------------------------------------------------------
 
-    // Range Proof ------------------------------------------------------------------------------
-    let range_proof_txns = get_zk_proof_context_state_account_creation_transactions(
-        &sender_keypair,
-        &range_proof_context_state_account,
+    // Range Proof Instructions------------------------------------------------------------------------------
+    let (range_create_ix, range_verify_ix) = get_zk_proof_context_state_account_creation_instructions(
+        &sender_keypair.pubkey(),
+        &range_proof_context_state_account.pubkey(),
         &context_state_authority.pubkey(),
         &range_proof_data,
-        true,
     )?;
-    assert!(range_proof_txns.len() == 2);
-    client.send_and_confirm_transaction(&range_proof_txns[0])?;
-    std::thread::sleep(std::time::Duration::from_millis(500));
-    client.send_and_confirm_transaction(&range_proof_txns[1])?;
-    // Equality Proof ---------------------------------------------------------------------------
 
-    let equality_proof_txns = get_zk_proof_context_state_account_creation_transactions(
-        &sender_keypair,
-        &equality_proof_context_state_account,
+    // Equality Proof Instructions---------------------------------------------------------------------------
+    let (equality_create_ix, equality_verify_ix) = get_zk_proof_context_state_account_creation_instructions(
+        &sender_keypair.pubkey(),
+        &equality_proof_context_state_account.pubkey(),
         &context_state_authority.pubkey(),
         &equality_proof_data,
-        false,
     )?;
-    assert!(equality_proof_txns.len() == 1);
-    client.send_and_confirm_transaction(&equality_proof_txns[0])?;
 
-    // Ciphertext Validity Proof ----------------------------------------------------------------
-
-    let ciphertext_validity_proof_txns = get_zk_proof_context_state_account_creation_transactions(
-        &sender_keypair,
-        &ciphertext_validity_proof_context_state_account,
+    // Ciphertext Validity Proof Instructions ----------------------------------------------------------------
+    let (cv_create_ix, cv_verify_ix) = get_zk_proof_context_state_account_creation_instructions(
+        &sender_keypair.pubkey(),
+        &ciphertext_validity_proof_context_state_account.pubkey(),
         &context_state_authority.pubkey(),
         &ciphertext_validity_proof_data_with_ciphertext.proof_data,
-        false,
     )?;
-    assert!(ciphertext_validity_proof_txns.len() == 1);
-    client.send_and_confirm_transaction(&ciphertext_validity_proof_txns[0])?;
 
+
+    // Transact Proofs ------------------------------------------------------------------------------------
+    
+    // Transaction 1: Allocate all proof accounts at once.
+    println!("\nTransfer [Create Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(
+            &Transaction::new_signed_with_payer(
+                &[range_create_ix, equality_create_ix, cv_create_ix],
+                Some(&sender_keypair.pubkey()),
+                &[
+                    &sender_keypair, 
+                    &range_proof_context_state_account as &dyn Signer, 
+                    &equality_proof_context_state_account as &dyn Signer, 
+                    &ciphertext_validity_proof_context_state_account as &dyn Signer],
+                client.get_latest_blockhash()?,
+            )
+        )?
+    );
+
+    // Transaction 2: Encode Range Proof on its own (because it's the largest).
+    println!("\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(
+            &Transaction::new_signed_with_payer(
+                &[range_verify_ix],
+                Some(&sender_keypair.pubkey()),
+                &[&sender_keypair],
+                client.get_latest_blockhash()?,
+            )
+        )?
+    );
+
+    // Transaction 3: Encode all remaining proofs.
+    println!("\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(
+            &Transaction::new_signed_with_payer(
+                &[equality_verify_ix, cv_verify_ix],
+                Some(&sender_keypair.pubkey()),
+                &[&sender_keypair],
+                client.get_latest_blockhash()?,
+            )
+        )?
+    );
+
+    // Transaction 4: Execute transfer (below)
     // Transfer with Split Proofs -------------------------------------------
 
     let equality_proof_context_proof_account = ProofAccount::ContextAccount(equality_proof_pubkey);
@@ -290,7 +322,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
     println!(
-        "\nClose Proof Accounts: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
 
@@ -298,68 +330,43 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
 }
 
 /// Refactored version of spl_token_client::token::Token::confidential_transfer_create_context_state_account().
-/// Instead of sending transactions internally, this function returns the transactions to be sent externally.
-fn get_zk_proof_context_state_account_creation_transactions<
-ZK: bytemuck::Pod + zk_elgamal_proof_program::proof_data::ZkProofData<U>,
-U: bytemuck::Pod,
+/// Instead of sending transactions internally, this function now returns the instructions to be used externally.
+fn get_zk_proof_context_state_account_creation_instructions<
+    ZK: bytemuck::Pod + zk_elgamal_proof_program::proof_data::ZkProofData<U>,
+    U: bytemuck::Pod,
 >(
-    fee_payer_signer: &dyn Signer,
-    context_state_account_signer: &dyn Signer,
-    context_state_authority: &Pubkey,
+    fee_payer_pubkey: &Pubkey,
+    context_state_account_pubkey: &Pubkey,
+    context_state_authority_pubkey: &Pubkey,
     proof_data: &ZK,
-    split_account_creation_and_proof_verification: bool,
-) -> Result<Vec<Transaction>, Box<dyn Error>> {
-    let context_state_account_pubkey = context_state_account_signer.pubkey();
-    let instruction_type = spl_token_confidential_transfer_proof_extraction::instruction::zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
-
-    let space = size_of::<zk_elgamal_proof_program::state::ProofContextState<U>>();
+) -> Result<(solana_sdk::instruction::Instruction, solana_sdk::instruction::Instruction), Box<dyn Error>> {
+    use std::mem::size_of;
+    use solana_sdk::instruction::Instruction;
 
     let client = get_rpc_client()?;
-
+    let space = size_of::<zk_elgamal_proof_program::state::ProofContextState<U>>();
     let rent = client.get_minimum_balance_for_rent_exemption(space)?;
 
     let context_state_info = ContextStateInfo {
-        context_state_account: &context_state_account_pubkey,
-        context_state_authority: context_state_authority,
+        context_state_account: context_state_account_pubkey,
+        context_state_authority: context_state_authority_pubkey,
     };
 
-    let blockhash = client.get_latest_blockhash()?;
+    let instruction_type = spl_token_confidential_transfer_proof_extraction::instruction::zk_proof_type_to_instruction(
+        ZK::PROOF_TYPE,
+    )?;
 
-    let instructions = [
-        system_instruction::create_account(
-            &fee_payer_signer.pubkey(),
-            &context_state_account_pubkey,
-            rent,
-            space as u64,
-            &zk_elgamal_proof_program::id(),
-        ),
-        instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
-    ];
-    // Some proof instructions are right at the transaction size limit, but in the
-    // future it might be able to support the transfer too
-    if split_account_creation_and_proof_verification {
-        Ok(vec![
-            Transaction::new_signed_with_payer(
-                &[instructions[0].clone()],
-                Some(&fee_payer_signer.pubkey()),
-                &[&fee_payer_signer, &context_state_account_signer],
-                blockhash
-            ),
-            Transaction::new_signed_with_payer(
-                &[instructions[1].clone()],
-                Some(&fee_payer_signer.pubkey()),
-                &[&fee_payer_signer],
-                blockhash,
-            )
-        ])
-    } else {
-        Ok(vec![
-            Transaction::new_signed_with_payer(
-                &instructions,
-                Some(&fee_payer_signer.pubkey()),
-                &[&fee_payer_signer, &context_state_account_signer],
-                blockhash,
-            )
-        ])
-    }
+    let create_account_ix = system_instruction::create_account(
+        fee_payer_pubkey,
+        context_state_account_pubkey,
+        rent,
+        space as u64,
+        &zk_elgamal_proof_program::id(),
+    );
+
+    let verify_proof_ix =
+        instruction_type.encode_verify_proof(Some(context_state_info), proof_data);
+
+    // Return a tuple containing the create account instruction and verify proof instruction.
+    Ok((create_account_ix, verify_proof_ix))
 }
