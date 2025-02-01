@@ -143,7 +143,9 @@ Transaction links per step (devnet):
 
 1. Transfer
 
-    - [Create Range Proof Context State](https://explorer.solana.com/tx/3oQivHMnWAWFjFZcyn2gk8UhkQfzuDPb8hEg1h3xxLwPbyLMc1QNhBvfk6ozd4myPk2vxj1WTKXnHzgt47h2FxPL?cluster=devnet)
+    - Create Range Proof Context State (too large for a single transaction)
+        - [Allocate Context State Account](https://explorer.solana.com/tx/3i7Wmspx4MUyiNAjHuXxhiP773dLaTghnnCGZzwmih5zLMhRoUqwPHhhAK33w3TAEtgsLUCTrCvw9KXmohJkyUvg?cluster=devnet)
+        - [Encode the proof ](https://explorer.solana.com/tx/3oQivHMnWAWFjFZcyn2gk8UhkQfzuDPb8hEg1h3xxLwPbyLMc1QNhBvfk6ozd4myPk2vxj1WTKXnHzgt47h2FxPL?cluster=devnet) 
 
     - [Create Equality Proof Context State](https://explorer.solana.com/tx/aPjBD7yuEPrRiyj8Ycu1jPFKrYgt3YBC5nk1JQxWenGydLHKcpwCvDzsqzMSMeoP5Y5YPkPebsPhUPCzi2SDHkv?cluster=devnet)
 
