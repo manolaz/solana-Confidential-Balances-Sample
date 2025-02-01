@@ -179,43 +179,27 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     client.send_and_confirm_transaction(&range_proof_txns[1])?;
     // Equality Proof ---------------------------------------------------------------------------
 
-    match token
-        .confidential_transfer_create_context_state_account(
-            &equality_proof_pubkey,
-            &context_state_authority.pubkey(),
-            &equality_proof_data,
-            false,
-            &[&equality_proof_context_state_account],
-        )
-        .await
-    {
-        Ok(RpcClientResponse::Signature(signature)) => {
-            println!("\nCreate Equality Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
-        }
-        _ => {
-            panic!("Unexpected result from create equality proof context state account");
-        }
-    }
+    let equality_proof_txns = get_zk_proof_context_state_account_creation_transactions(
+        &sender_keypair,
+        &equality_proof_context_state_account,
+        &context_state_authority.pubkey(),
+        &equality_proof_data,
+        false,
+    )?;
+    assert!(equality_proof_txns.len() == 1);
+    client.send_and_confirm_transaction(&equality_proof_txns[0])?;
 
     // Ciphertext Validity Proof ----------------------------------------------------------------
 
-    match token
-        .confidential_transfer_create_context_state_account(
-            &ciphertext_validity_proof_pubkey,
-            &context_state_authority.pubkey(),
-            &ciphertext_validity_proof_data_with_ciphertext.proof_data,
-            false,
-            &[&ciphertext_validity_proof_context_state_account],
-        )
-        .await
-    {
-        Ok(RpcClientResponse::Signature(signature)) => {
-            println!("\nCreate Ciphertext Validity Proof Context State: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899", signature);
-        }
-        _ => {
-            panic!("Unexpected result from create ciphertext validity proof context state account");
-        }
-    }
+    let ciphertext_validity_proof_txns = get_zk_proof_context_state_account_creation_transactions(
+        &sender_keypair,
+        &ciphertext_validity_proof_context_state_account,
+        &context_state_authority.pubkey(),
+        &ciphertext_validity_proof_data_with_ciphertext.proof_data,
+        false,
+    )?;
+    assert!(ciphertext_validity_proof_txns.len() == 1);
+    client.send_and_confirm_transaction(&ciphertext_validity_proof_txns[0])?;
 
     // Transfer with Split Proofs -------------------------------------------
 
