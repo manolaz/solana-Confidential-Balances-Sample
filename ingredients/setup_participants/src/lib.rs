@@ -23,7 +23,9 @@ pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keyp
         }
         None => {
             if client.request_airdrop(&participant_pubkey, 2 * LAMPORTS_PER_SOL).is_err() {
+                let current_balance = client.get_balance(&participant_pubkey)?;
                 println!("Failed to request airdrop. Ensure the fee payer account has sufficient SOL.");
+                println!("Current participant balance: {}", current_balance);
             }
         }
     }

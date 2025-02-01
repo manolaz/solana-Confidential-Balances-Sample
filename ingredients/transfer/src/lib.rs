@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use serde_json::json;
+use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use solana_zk_sdk::zk_elgamal_proof_program;
 use spl_token_client::{client::{self, ProgramClient, SendTransaction, SimulateTransaction}, token::TokenError};
 
@@ -30,16 +34,40 @@ use {
     }, spl_token_confidential_transfer_proof_generation::
         transfer::TransferProofData, std::{error::Error, str::FromStr, sync::Arc}
 };
+
+use reqwest;
+use serde_json::Value;
+async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
+    // Query the API
+    let response = reqwest::get("https://bundles.jito.wtf/api/v1/bundles/tip_floor").await?;
+    let data: Value = response.json().await?;
+
+    // Parse the JSON to get the 99th percentile tip
+    let landed_tips_99th_percentile = data[0]["landed_tips_99th_percentile"]
+        .as_f64()
+        .ok_or("Failed to parse landed_tips_99th_percentile")?;
+
+    println!("Jito landed_tips_99th_percentile: {}", landed_tips_99th_percentile);
+
+    // Convert SOL to Lamports
+    let jito_tip_amount = (landed_tips_99th_percentile * LAMPORTS_PER_SOL as f64) as u64;
+
+    Ok(jito_tip_amount)
+}
+
 pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
-    // let jito_sdk = JitoJsonRpcSDK::new("https://testnet.block-engine.jito.wtf/api/v1", None);
-    // let random_tip_account = jito_sdk.get_random_tip_account().await?;
-    // let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
-    // const jito_tip_amount:u64 = 1_000; // 0.000001 SOL
-    // let jito_tip_ix = system_instruction::transfer(
-    //     &sender_keypair.pubkey(),
-    //     &jito_tip_account,
-    //     jito_tip_amount,
-    // );
+    let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
+    let random_tip_account = jito_sdk.get_random_tip_account().await?;
+    let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
+    let jito_tip_amount:u64 = get_max_jito_tip_amount().await?;
+    println!("jito tip amount lamports: {}", jito_tip_amount);
+    let jito_tip_ix = system_instruction::transfer(
+        &sender_keypair.pubkey(),
+        &jito_tip_account,
+        jito_tip_amount,
+    );
+
+    
 
     let client = get_rpc_client()?;
 
@@ -193,44 +221,53 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     // Transact Proofs ------------------------------------------------------------------------------------
     
     // Transaction 1: Allocate all proof accounts at once.
-    println!("\nTransfer [Create Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(
-            &Transaction::new_signed_with_payer(
-                &[range_create_ix, equality_create_ix, cv_create_ix],
-                Some(&sender_keypair.pubkey()),
-                &[
-                    &sender_keypair, 
-                    &range_proof_context_state_account as &dyn Signer, 
-                    &equality_proof_context_state_account as &dyn Signer, 
-                    &ciphertext_validity_proof_context_state_account as &dyn Signer],
-                client.get_latest_blockhash()?,
-            )
-        )?
+
+    let tx1 = Transaction::new_signed_with_payer(
+        &[range_create_ix, equality_create_ix, cv_create_ix, jito_tip_ix],
+        Some(&sender_keypair.pubkey()),
+        &[
+            &sender_keypair, 
+            &range_proof_context_state_account as &dyn Signer, 
+            &equality_proof_context_state_account as &dyn Signer, 
+            &ciphertext_validity_proof_context_state_account as &dyn Signer],
+        client.get_latest_blockhash()?,
     );
+    let serialized_tx1 = bs58::encode(bincode::serialize(&tx1)?).into_string();
 
     // Transaction 2: Encode Range Proof on its own (because it's the largest).
-    println!("\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(
-            &Transaction::new_signed_with_payer(
-                &[range_verify_ix],
-                Some(&sender_keypair.pubkey()),
-                &[&sender_keypair],
-                client.get_latest_blockhash()?,
-            )
-        )?
+    let tx2 = Transaction::new_signed_with_payer(
+        &[range_verify_ix],
+        Some(&sender_keypair.pubkey()),
+        &[&sender_keypair],
+        client.get_latest_blockhash()?,
     );
+    let serialized_tx2 = bs58::encode(bincode::serialize(&tx2)?).into_string();
 
     // Transaction 3: Encode all remaining proofs.
-    println!("\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(
-            &Transaction::new_signed_with_payer(
-                &[equality_verify_ix, cv_verify_ix],
-                Some(&sender_keypair.pubkey()),
-                &[&sender_keypair],
-                client.get_latest_blockhash()?,
-            )
-        )?
+    let tx3 = Transaction::new_signed_with_payer(
+        &[equality_verify_ix, cv_verify_ix],
+        Some(&sender_keypair.pubkey()),
+        &[&sender_keypair],
+        client.get_latest_blockhash()?,
     );
+    let serialized_tx3 = bs58::encode(bincode::serialize(&tx3)?).into_string();
+
+    let tx_bundle = json!([serialized_tx1, serialized_tx2, serialized_tx3]);
+    
+    // UUID for the bundle
+    let uuid = None;
+
+    // Send bundle using Jito SDK
+    println!("Sending bundle with X transactions...");
+    let response = jito_sdk.send_bundle(Some(tx_bundle), uuid).await?;
+
+    // Extract bundle UUID from response
+    let bundle_uuid = response["result"]
+        .as_str()
+        .ok_or("Failed to get bundle UUID from response")?;
+    println!("Bundle sent with UUID: {}", bundle_uuid);
+
+    confirm_bundle_status(&jito_sdk, &bundle_uuid).await?;
 
     // Transaction 4: Execute transfer (below)
     // Transfer with Split Proofs -------------------------------------------
@@ -369,4 +406,147 @@ fn get_zk_proof_context_state_account_creation_instructions<
 
     // Return a tuple containing the create account instruction and verify proof instruction.
     Ok((create_account_ix, verify_proof_ix))
+}
+
+#[derive(Debug)]
+struct BundleStatus {
+    confirmation_status: Option<String>,
+    err: Option<serde_json::Value>,
+    transactions: Option<Vec<String>>,
+}
+
+const max_retries: u32 = 30;
+const retry_delay: Duration = Duration::from_secs(3);
+async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
+
+    for attempt in 1..=max_retries {
+        println!("Checking bundle status (attempt {}/{})", attempt, max_retries);
+
+        let status_response = jito_sdk.get_in_flight_bundle_statuses(vec![bundle_uuid.to_string()]).await?;
+
+        if let Some(result) = status_response.get("result") {
+            if let Some(value) = result.get("value") {
+                if let Some(statuses) = value.as_array() {
+                    if let Some(bundle_status) = statuses.get(0) {
+                        if let Some(status) = bundle_status.get("status") {
+                            match status.as_str() {
+                                Some("Landed") => {
+                                    println!("Bundle landed on-chain. Checking final status...");
+                                    return check_final_bundle_status(&jito_sdk, bundle_uuid).await;
+                                },
+                                Some("Pending") => {
+                                    println!("Bundle is pending. Waiting...");
+                                },
+                                Some(status) => {
+                                    if status == "Failed" {
+                                        return Err(format!("Bundle failed to land on-chain").into());
+                                    }
+                                    println!("Unexpected bundle status: {}. Waiting...", status);
+                                },
+                                None => {
+                                    println!("Unable to parse bundle status. Waiting...");
+                                }
+                            }
+                        } else {
+                            println!("Status field not found in bundle status. Waiting...");
+                        }
+                    } else {
+                        println!("Bundle status not found. Waiting...");
+                    }
+                } else {
+                    println!("Unexpected value format. Waiting...");
+                }
+            } else {
+                println!("Value field not found in result. Waiting...");
+
+            }
+        } else if let Some(error) = status_response.get("error") {
+            println!("Error checking bundle status: {:?}", error);
+        } else {
+            println!("Unexpected response format. Waiting...");
+        }
+
+        if attempt < max_retries {
+            std::thread::sleep(retry_delay);
+        }
+    }
+
+    Err(format!("Failed to confirm bundle status after {} attempts", max_retries).into())
+}
+
+async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
+
+    for attempt in 1..=max_retries {
+        println!("Checking final bundle status (attempt {}/{})", attempt, max_retries);
+
+        let status_response = jito_sdk.get_bundle_statuses(vec![bundle_uuid.to_string()]).await?;
+        let bundle_status = get_bundle_status(&status_response)?;
+
+        match bundle_status.confirmation_status.as_deref() {
+            Some("confirmed") => {
+                println!("Bundle confirmed on-chain. Waiting for finalization...");
+                check_transaction_error(&bundle_status)?;
+            },
+            Some("finalized") => {
+                println!("Bundle finalized on-chain successfully!");
+                check_transaction_error(&bundle_status)?;
+                print_transaction_url(&bundle_status);
+                return Ok(());
+            },
+            Some(status) => {
+                println!("Unexpected final bundle status: {}. Continuing to poll...", status);
+            },
+            None => {
+                println!("Unable to parse final bundle status. Continuing to poll...");
+            }
+        }
+
+        if attempt < max_retries {
+            std::thread::sleep(retry_delay);
+        }
+    }
+
+    Err(format!("Failed to get finalized status after {} attempts", max_retries).into())
+}
+
+fn get_bundle_status(status_response: &serde_json::Value) -> Result<BundleStatus, Box<dyn std::error::Error>> {
+    status_response
+        .get("result")
+        .and_then(|result| result.get("value"))
+        .and_then(|value| value.as_array())
+        .and_then(|statuses| statuses.get(0))
+        .ok_or_else(|| format!("Failed to parse bundle status").into())
+        .map(|bundle_status| BundleStatus {
+            confirmation_status: bundle_status.get("confirmation_status").and_then(|s| s.as_str()).map(String::from),
+            err: bundle_status.get("err").cloned(),
+            transactions: bundle_status.get("transactions").and_then(|t| t.as_array()).map(|arr| {
+                arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()
+            }),
+        })
+}
+
+fn check_transaction_error(bundle_status: &BundleStatus) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(err) = &bundle_status.err {
+        if err["Ok"].is_null() {
+            println!("Transaction executed without errors.");
+            Ok(())
+        } else {
+            println!("Transaction encountered an error: {:?}", err);
+            Err(format!("Transaction encountered an error").into())
+        }
+    } else {
+        Ok(())
+    }
+}
+
+fn print_transaction_url(bundle_status: &BundleStatus) {
+    if let Some(transactions) = &bundle_status.transactions {
+        if let Some(tx_id) = transactions.first() {
+            println!("Transaction URL: https://solscan.io/tx/{}", tx_id);
+        } else {
+            println!("Unable to extract transaction ID.");
+        }
+    } else {
+        println!("No transactions found in the bundle status.");
+    }
 }
