@@ -19,7 +19,7 @@ use spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, P
 pub async fn setup_token_account(
     token_account_authority: &dyn Signer
 ) -> Result<(), Box<dyn Error>> {
-    /*
+
     let client = get_rpc_client()?;
     let mint = get_or_create_keypair("mint")?;
     let fee_payer_keypair = get_or_create_keypair("fee_payer_keypair")?;
@@ -82,7 +82,7 @@ pub async fn setup_token_account(
         &spl_token_2022::id(),                 // Program ID
         &token_account_pubkey,                 // Token account
         &mint.pubkey(),                        // Mint
-        decryptable_balance.into(),             // Initial balance
+        &decryptable_balance.into(),             // Initial balance
         maximum_pending_balance_credit_counter, // Maximum pending balance credit counter
         &token_account_authority.pubkey(),     // Token Account Owner
         &[],                                   // Additional signers
@@ -111,7 +111,7 @@ pub async fn setup_token_account(
         "\nCreate Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
-    */
+
     Ok(())
 }
 

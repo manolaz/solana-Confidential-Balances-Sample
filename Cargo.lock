@@ -1816,7 +1816,7 @@ dependencies = [
  "solana-sdk",
  "solana-transaction-status-client-types",
  "spl-token-2022 7.0.0",
- "spl-token-confidential-transfer-proof-generation 0.2.0",
+ "spl-token-confidential-transfer-proof-generation 0.3.0",
 ]
 
 [[package]]
@@ -2906,7 +2906,7 @@ dependencies = [
  "solana-zk-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
- "spl-token-confidential-transfer-proof-extraction 0.2.0",
+ "spl-token-confidential-transfer-proof-extraction 0.2.1",
 ]
 
 [[package]]
@@ -4408,7 +4408,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
- "spl-token-confidential-transfer-proof-extraction 0.2.0",
+ "spl-token-confidential-transfer-proof-extraction 0.2.1",
  "tokio",
 ]
 
@@ -6558,10 +6558,20 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
- "spl-associated-token-account-client",
+ "spl-associated-token-account-client 2.0.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
  "spl-token 7.0.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
  "spl-token-2022 6.0.0",
  "thiserror 2.0.11",
+]
+
+[[package]]
+name = "spl-associated-token-account-client"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f8349dbcbe575f354f9a533a21f272f3eb3808a49e2fdc1c34393b88ba76cb"
+dependencies = [
+ "solana-instruction",
+ "solana-pubkey",
 ]
 
 [[package]]
@@ -6817,7 +6827,8 @@ dependencies = [
 [[package]]
 name = "spl-record"
 version = "0.3.0"
-source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1288810a85bbe7e62ee3c6f7b8119e8c1016e90351411d12e4132e98c7ca7344"
 dependencies = [
  "bytemuck",
  "num-derive",
@@ -6831,7 +6842,7 @@ dependencies = [
  "solana-program-pack",
  "solana-pubkey",
  "solana-rent",
- "thiserror 2.0.11",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -7015,8 +7026,8 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.13.0"
-source = "git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da#224a96b164357a221c7f7dae5e348f9c0f7a73da"
+version = "0.14.0"
+source = "git+https://github.com/kilogold/token-2022.git?branch=cli_transaction_generation#08743234b3871aea09ea2ac392c53c1925fd2000"
 dependencies = [
  "async-trait",
  "bincode",
@@ -7029,17 +7040,17 @@ dependencies = [
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-sdk",
- "spl-associated-token-account-client",
- "spl-elgamal-registry 0.1.0",
+ "spl-associated-token-account-client 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-elgamal-registry 0.1.1",
  "spl-memo 6.0.0",
  "spl-record",
- "spl-token 7.0.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
- "spl-token-2022 6.0.0",
- "spl-token-confidential-transfer-proof-extraction 0.2.0",
- "spl-token-confidential-transfer-proof-generation 0.2.0",
- "spl-token-group-interface 0.5.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
- "spl-token-metadata-interface 0.6.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
- "spl-transfer-hook-interface 0.9.0 (git+https://github.com/solana-labs/solana-program-library.git?rev=224a96b164357a221c7f7dae5e348f9c0f7a73da)",
+ "spl-token 7.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 7.0.0",
+ "spl-token-confidential-transfer-proof-extraction 0.2.1",
+ "spl-token-confidential-transfer-proof-generation 0.3.0",
+ "spl-token-group-interface 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-metadata-interface 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-transfer-hook-interface 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 2.0.11",
 ]
 
@@ -8044,8 +8055,8 @@ dependencies = [
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-client",
- "spl-token-confidential-transfer-proof-extraction 0.2.0",
- "spl-token-confidential-transfer-proof-generation 0.2.0",
+ "spl-token-confidential-transfer-proof-extraction 0.2.1",
+ "spl-token-confidential-transfer-proof-generation 0.3.0",
 ]
 
 [[package]]
@@ -8645,7 +8656,7 @@ dependencies = [
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-client",
- "spl-token-confidential-transfer-proof-generation 0.2.0",
+ "spl-token-confidential-transfer-proof-generation 0.3.0",
 ]
 
 [[package]]

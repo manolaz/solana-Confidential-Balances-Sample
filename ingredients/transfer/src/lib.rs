@@ -3,7 +3,6 @@ use std::time::Duration;
 use serde_json::json;
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use solana_zk_sdk::zk_elgamal_proof_program;
-use spl_token_client::{client::{self, ProgramClient, SendTransaction, SimulateTransaction}, token::TokenError};
 
 use {
     jito_sdk_rust::JitoJsonRpcSDK, keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, record_value}, solana_sdk::{
@@ -56,7 +55,7 @@ async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
 }
 
 pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
-    /*
+    
     let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
     let random_tip_account = jito_sdk.get_random_tip_account().await?;
     let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
@@ -363,7 +362,7 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
         transaction_signature
     );
-*/
+
     Ok(())
 }
 
@@ -379,7 +378,7 @@ fn get_zk_proof_context_state_account_creation_instructions<
     proof_data: &ZK,
 ) -> Result<(solana_sdk::instruction::Instruction, solana_sdk::instruction::Instruction), Box<dyn Error>> {
     use std::mem::size_of;
-    use solana_sdk::instruction::Instruction;
+    use spl_token_confidential_transfer_proof_extraction::instruction::zk_proof_type_to_instruction;
 
     let client = get_rpc_client()?;
     let space = size_of::<zk_elgamal_proof_program::state::ProofContextState<U>>();
@@ -390,9 +389,7 @@ fn get_zk_proof_context_state_account_creation_instructions<
         context_state_authority: context_state_authority_pubkey,
     };
 
-    let instruction_type = spl_token_confidential_transfer_proof_extraction::instruction::zk_proof_type_to_instruction(
-        ZK::PROOF_TYPE,
-    )?;
+    let instruction_type = zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
 
     let create_account_ix = system_instruction::create_account(
         fee_payer_pubkey,
@@ -416,12 +413,12 @@ struct BundleStatus {
     transactions: Option<Vec<String>>,
 }
 
-const max_retries: u32 = 30;
-const retry_delay: Duration = Duration::from_secs(3);
+const MAX_RETRIES: u32 = 30;
+const RETRY_DELAY: Duration = Duration::from_secs(3);
 async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
 
-    for attempt in 1..=max_retries {
-        println!("Checking bundle status (attempt {}/{})", attempt, max_retries);
+    for attempt in 1..=MAX_RETRIES {
+        println!("Checking bundle status (attempt {}/{})", attempt, MAX_RETRIES);
 
         let status_response = jito_sdk.get_in_flight_bundle_statuses(vec![bundle_uuid.to_string()]).await?;
 
@@ -467,18 +464,18 @@ async fn confirm_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> 
             println!("Unexpected response format. Waiting...");
         }
 
-        if attempt < max_retries {
-            std::thread::sleep(retry_delay);
+        if attempt < MAX_RETRIES {
+            std::thread::sleep(RETRY_DELAY);
         }
     }
 
-    Err(format!("Failed to confirm bundle status after {} attempts", max_retries).into())
+    Err(format!("Failed to confirm bundle status after {} attempts", MAX_RETRIES).into())
 }
 
 async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str) -> Result<(), Box<dyn std::error::Error>> {
 
-    for attempt in 1..=max_retries {
-        println!("Checking final bundle status (attempt {}/{})", attempt, max_retries);
+    for attempt in 1..=MAX_RETRIES {
+        println!("Checking final bundle status (attempt {}/{})", attempt, MAX_RETRIES);
 
         let status_response = jito_sdk.get_bundle_statuses(vec![bundle_uuid.to_string()]).await?;
         let bundle_status = get_bundle_status(&status_response)?;
@@ -502,12 +499,12 @@ async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str)
             }
         }
 
-        if attempt < max_retries {
-            std::thread::sleep(retry_delay);
+        if attempt < MAX_RETRIES {
+            std::thread::sleep(RETRY_DELAY);
         }
     }
 
-    Err(format!("Failed to get finalized status after {} attempts", max_retries).into())
+    Err(format!("Failed to get finalized status after {} attempts", MAX_RETRIES).into())
 }
 
 fn get_bundle_status(status_response: &serde_json::Value) -> Result<BundleStatus, Box<dyn std::error::Error>> {

@@ -34,7 +34,7 @@ use {
 };
 
 pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Signer>) -> Result<(), Box<dyn Error>> {
-    /*
+    
     let mint = get_or_create_keypair("mint")?;
     let decimals = load_value("mint_decimals")?;
     let recipient_associated_token_address = get_associated_token_address_with_program_id(
@@ -205,6 +205,6 @@ pub async fn withdraw_tokens(withdraw_amount: u64, recipient_signer: Arc<dyn Sig
             panic!("Unexpected result from close range proof context state account");
         }
     }
-    */
+    
     Ok(())
 }
