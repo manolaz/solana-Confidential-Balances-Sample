@@ -28,7 +28,7 @@ use {
         },
         state::{Account, Mint},
     }, spl_token_client::{
-        client::{ProgramRpcClient, ProgramRpcClientSendTransaction, RpcClientResponse},
+        client::{ProgramRpcClient, ProgramRpcClientSendTransaction},
         token::{ProofAccount, ProofAccountWithCiphertext, Token},
     }, spl_token_confidential_transfer_proof_generation::
         transfer::TransferProofData, std::{error::Error, str::FromStr, sync::Arc}

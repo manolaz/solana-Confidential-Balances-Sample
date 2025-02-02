@@ -1,7 +1,7 @@
 use {
     keypair_utils::get_rpc_client,
     solana_sdk::{
-        native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::Keypair
+        pubkey::Pubkey, signature::Keypair
     },
     std::error::Error,
 };
@@ -38,10 +38,10 @@ pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keyp
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use keypair_utils::get_or_create_keypair;
     use solana_sdk::signer::Signer;
-
-    use super::*;
+    use solana_sdk::native_token::LAMPORTS_PER_SOL;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_setup_basic_participant() -> Result<(), Box<dyn Error>> {
