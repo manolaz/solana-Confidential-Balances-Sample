@@ -168,7 +168,13 @@ Transaction links per step (devnet):
 
     - [Close Range Proof Context State Account](https://explorer.solana.com/tx/128Yq7WSjejDg5vpGNL6VzJgKqG2o3trPFHiCjTfLEzRJ1j3jbWVQkv7msXDtBsDKHeTEpJF6zoiQMjzU3NwKPaZ?cluster=devnet)
 
-
+## [Basic Atomic Transfer](../recipes/src/lib.rs#L90)
+Scenario:
+- Transfers use Jito bundles to ensure an all-or-nothing operation.  
+### Command:
+```bash
+cargo test --package recipes --lib -- --nocapture recipe::basic_transfer_recipe_atomic --exact --show-output
+```
 ## [Confidential MintBurn Transfer](../recipes/src/lib.rs#L18)
 Scenario:
 - Confidential mint account (using confidential mint/burn extension).  
