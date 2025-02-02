@@ -144,7 +144,6 @@ async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str)
             Some("finalized") => {
                 println!("Bundle finalized on-chain successfully!");
                 check_transaction_error(&bundle_status)?;
-                print_transaction_url(&bundle_status);
                 return match bundle_status.transactions {
                     Some(transactions) => Ok(transactions),
                     None => Err("Error retrieving transactions from finalized bundle status".into()),
@@ -193,17 +192,5 @@ fn check_transaction_error(bundle_status: &BundleStatus) -> Result<(), Box<dyn s
         }
     } else {
         Ok(())
-    }
-}
-
-fn print_transaction_url(bundle_status: &BundleStatus) {
-    if let Some(transactions) = &bundle_status.transactions {
-        if let Some(tx_id) = transactions.first() {
-            println!("Transaction URL: https://solscan.io/tx/{}", tx_id);
-        } else {
-            println!("Unable to extract transaction ID.");
-        }
-    } else {
-        println!("No transactions found in the bundle status.");
     }
 }

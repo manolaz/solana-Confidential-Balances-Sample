@@ -332,61 +332,94 @@ async fn prepare_transactions(sender_keypair: Arc<dyn Signer>, recipient_keypair
 
 pub async fn with_split_proofs_atomic(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
     
-    let mut transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair, confidential_transfer_amount).await?;
+    // When using Jito bundles there are many reasons why a bundle might not land:
+    // - Not enough priority fee prolongs transaction inclusion, risking rejection.
+    //   - Unfortunately, many transactions in transfer are saturated, lacking room to insert a priority fee instruction.
+    //   - This is the most likely reason why bundles fail.
+    // - We never know if the leading validator is running the Jito engine.
 
-    // Reconstruct the one transaction to add the jito tip instruction.
-    {
-        // Not-so-early-out check for testnet or mainnet.
-        let client = get_rpc_client()?;
-        assert!(client.url().contains("testnet") || client.url().contains("mainnet"), "This Jito demo only works on testnet or mainnet (adjust code for custom endpoints)");
-        
-        let jito_tip_ix = jito::create_jito_tip_instruction(sender_keypair.pubkey()).await?;
-        
-        // Any transaction can be used. This one is the simplest to edit (and fits within size limits).
-        let tx3 = &mut transactions[2];
+    // We'll do a best attempt at retrying the bundle.
+    keypair_utils::run_with_retry(5, || async {
 
-        // Include instruction's accounts into the transaction (without duplicates).
+        let mut transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair.clone(), confidential_transfer_amount).await?;
+
+        // Reconstruct the one transaction to add the jito tip instruction.
         {
-            let mut unique_pubkeys: std::collections::HashSet<_> = tx3.message.account_keys.iter().cloned().collect();
-            tx3.message.account_keys.extend(
-                jito_tip_ix
-                    .accounts
-                    .iter()
-                    .map(|account| account.pubkey)
-                    .filter(|pubkey| unique_pubkeys.insert(*pubkey))
-            );
+            // Not-so-early-out check for testnet or mainnet.
+            let client = get_rpc_client()?;
+            assert!(client.url().contains("testnet") || client.url().contains("mainnet"), "This Jito demo only works on testnet or mainnet (adjust code for custom endpoints)");
+            
+            let jito_tip_ix = jito::create_jito_tip_instruction(sender_keypair.pubkey()).await?;
+            
+            // Any transaction can be used. This one is the simplest to edit (and fits within size limits).
+            let tx3 = &mut transactions[2];
 
-            tx3.message.account_keys.push(solana_sdk::system_program::id());
+            // Include instruction's accounts into the transaction (without duplicates).
+            {
+                let mut unique_pubkeys: std::collections::HashSet<_> = tx3.message.account_keys.iter().cloned().collect();
+                tx3.message.account_keys.extend(
+                    jito_tip_ix
+                        .accounts
+                        .iter()
+                        .map(|account| account.pubkey)
+                        .filter(|pubkey| unique_pubkeys.insert(*pubkey))
+                );
+
+                tx3.message.account_keys.push(solana_sdk::system_program::id());
+            }
+            
+            // Include instruction into the transaction.
+            let compiled_jito_tip_ix = tx3.message.compile_instruction(&jito_tip_ix);
+            tx3.message.instructions.push(compiled_jito_tip_ix);
+
+            // Re-sign the transaction for integrity.
+            tx3.sign(&[&sender_keypair], client.get_latest_blockhash()?);
+
         }
+
+        let serialized_tx1 = bs58::encode(bincode::serialize(&transactions[0])?).into_string();
+        let serialized_tx2 = bs58::encode(bincode::serialize(&transactions[1])?).into_string();
+        let serialized_tx3 = bs58::encode(bincode::serialize(&transactions[2])?).into_string();
+        let serialized_tx4 = bs58::encode(bincode::serialize(&transactions[3])?).into_string();
+        let serialized_tx5 = bs58::encode(bincode::serialize(&transactions[4])?).into_string();
         
-        // Include instruction into the transaction.
-        let compiled_jito_tip_ix = tx3.message.compile_instruction(&jito_tip_ix);
-        tx3.message.instructions.push(compiled_jito_tip_ix);
+        let tx_bundle = json!([
+            serialized_tx1, 
+            serialized_tx2, 
+            serialized_tx3, 
+            serialized_tx4, 
+            serialized_tx5
+        ]);
+        
+        let bundled_signatures = jito::submit_and_confirm_bundle(tx_bundle).await?;
 
-        // Re-sign the transaction for integrity.
-        tx3.sign(&[&sender_keypair], client.get_latest_blockhash()?);
+        record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
 
-    }
-
-    let serialized_tx1 = bs58::encode(bincode::serialize(&transactions[0])?).into_string();
-    let serialized_tx2 = bs58::encode(bincode::serialize(&transactions[1])?).into_string();
-    let serialized_tx3 = bs58::encode(bincode::serialize(&transactions[2])?).into_string();
-    let serialized_tx4 = bs58::encode(bincode::serialize(&transactions[3])?).into_string();
-    let serialized_tx5 = bs58::encode(bincode::serialize(&transactions[4])?).into_string();
+        println!(
+            "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            bundled_signatures[0]
+        );
+        println!(
+            "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            bundled_signatures[1]
+        );
+        println!(
+            "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            bundled_signatures[2]
+        );
     
-    let tx_bundle = json!([
-        serialized_tx1, 
-        serialized_tx2, 
-        serialized_tx3, 
-        serialized_tx4, 
-        serialized_tx5
-    ]);
-    
-    let bundled_signatures = jito::submit_and_confirm_bundle(tx_bundle).await?;
+        println!(
+            "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            bundled_signatures[3]
+        );
+        
+        println!(
+            "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            bundled_signatures[4]
+        );
 
-    record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
-
-    Ok(())
+        Ok(())
+    }).await
 }
 
 /// Refactored version of spl_token_client::token::Token::confidential_transfer_create_context_state_account().

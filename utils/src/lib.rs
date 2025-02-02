@@ -6,7 +6,7 @@ use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::signer::Signer;
 use solana_zk_sdk::encryption::auth_encryption::AeKey;
 use solana_zk_sdk::encryption::elgamal::{ElGamalKeypair, ElGamalSecretKey};
-use std::env;
+use std::{env, string};
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -201,4 +201,45 @@ pub async fn get_gcp_signer_from_env(
 
     let signer = GcpSigner::new(resource_name.to_string()).await?;
     Ok(signer)
+}
+
+pub async fn run_with_retry<F, Fut>(
+    max_retries: usize,
+    operation: F,
+) -> Result<(), Box<dyn Error>>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<(), Box<dyn Error>>>,
+{
+    for attempt in 1..=max_retries {
+        println!("Attempt {} of {}", attempt, max_retries);
+        match operation().await {
+            Ok(_) => return Ok(()),
+            Err(e) => {
+                println!("Error: {}. Retrying...", e);
+                if attempt == max_retries {
+                    return Err(e);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn print_transaction_url(pre_text: &str, signature: &str) {
+    const SOLANA_EXPLORER_URL: &str = "https://explorer.solana.com/tx/";
+
+    let cluster = match env::var("RPC_URL").unwrap_or_default() {
+        url if url.contains("devnet") => "?cluster=devnet",
+        url if url.contains("testnet") => "?cluster=testnet",
+        _ => "",
+    };
+
+    println!(
+        "\n{}: {}{}{}",
+        pre_text,
+        SOLANA_EXPLORER_URL,
+        signature,
+        cluster
+    );
 }
