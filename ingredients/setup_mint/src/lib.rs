@@ -45,20 +45,9 @@ pub async fn create_mint(absolute_authority: &Keypair, auditor_elgamal_keypair: 
     let extension_instruction =
         confidential_transfer_mint_extension.instruction(&spl_token_2022::id(), &mint.pubkey())?;
 
-    // Initialize the mint account
-    //TODO: Use program-2022/src/extension/confidential_transfer/instruction/initialize_mint()
-    let initialize_mint_instruction = initialize_mint(
-        &spl_token_2022::id(),
-        &mint.pubkey(),
-        &mint_authority.pubkey(),
-        Some(&freeze_authority.pubkey()),
-        decimals,
-    )?;
-
     let instructions = vec![
         create_account_instruction,
         extension_instruction,
-        initialize_mint_instruction,
     ];
 
     let recent_blockhash = client.get_latest_blockhash()?;
@@ -68,11 +57,48 @@ pub async fn create_mint(absolute_authority: &Keypair, auditor_elgamal_keypair: 
         &[&fee_payer_keypair, &mint as &dyn Signer],
         recent_blockhash,
     );
-    let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nCreate Mint Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    { // Add `initialize_mint_instruction` to the signed transaction
+
+        let mut transaction = transaction;
+
+        // Initialize the mint account
+        //TODO: Use program-2022/src/extension/confidential_transfer/instruction/initialize_mint()
+        let initialize_mint_instruction = initialize_mint(
+            &spl_token_2022::id(),
+            &mint.pubkey(),
+            &mint_authority.pubkey(),
+            Some(&freeze_authority.pubkey()),
+            decimals,
+        )?;
+
+        {
+            let mut unique_pubkeys: std::collections::HashSet<_> = transaction.message.account_keys.iter().cloned().collect();
+            transaction.message.account_keys.extend(
+                initialize_mint_instruction
+                    .accounts
+                    .iter()
+                    .map(|account| account.pubkey)
+                    .filter(|pubkey| unique_pubkeys.insert(*pubkey))
+            );
+        }
+
+        let compiled_initialize_mint_instruction = 
+            transaction.message.compile_instruction(&initialize_mint_instruction);
+        
+        transaction.message.instructions.push(compiled_initialize_mint_instruction);
+
+        transaction.sign(
+            &[&fee_payer_keypair, &mint as &dyn Signer],
+            recent_blockhash
+        );
+
+        let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
+        println!(
+            "\nCreate Mint Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+            transaction_signature
+        );
+    }
+
     Ok(())
 }

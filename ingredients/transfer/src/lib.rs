@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use serde_json::json;
-use solana_sdk::{instruction::CompiledInstruction, native_token::LAMPORTS_PER_SOL};
+use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use solana_zk_sdk::zk_elgamal_proof_program;
 
 use {
@@ -54,7 +54,42 @@ async fn get_max_jito_tip_amount() -> Result<u64, Box<dyn std::error::Error>> {
     Ok(jito_tip_amount)
 }
 
-pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64, use_jito_bundles: bool) -> Result<(), Box<dyn Error>> {   
+pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {   
+
+    let client = get_rpc_client()?;
+    let transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair, confidential_transfer_amount).await?;
+    assert!(transactions.len() == 5);
+
+    println!(
+        "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(&transactions[0])?
+    );
+    println!(
+        "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(&transactions[1])?
+    );
+    println!(
+        "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(&transactions[2])?
+    );
+
+    let signature = client.send_and_confirm_transaction(&transactions[3])?.to_string();
+    record_value("last_confidential_transfer_signature", &signature)?;
+    println!(
+        "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        signature
+    );
+    
+    println!(
+        "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
+        client.send_and_confirm_transaction(&transactions[4])?
+    );
+
+    Ok(())
+
+}
+
+async fn prepare_transactions(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let client = get_rpc_client()?;
 
     let mint = get_or_create_keypair("mint")?;
@@ -207,7 +242,6 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     // Transact Proofs ------------------------------------------------------------------------------------
     
     // Transaction 1: Allocate all proof accounts at once.
-
     let tx1 = Transaction::new_signed_with_payer(
         &[range_create_ix.clone(), equality_create_ix.clone(), cv_create_ix.clone()],
         Some(&sender_keypair.pubkey()),
@@ -313,84 +347,87 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
         recent_blockhash,
     );
 
-    if use_jito_bundles {
-        assert!(client.url().contains("testnet") || client.url().contains("mainnet"), "This Jito demo only works on testnet or mainnet (adjust code for custom endpoints)");
-        let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
+    Ok(vec![tx1, tx2, tx3, tx4, tx5])
+}
+pub async fn with_split_proofs_atomic(sender_keypair: Arc<dyn Signer>, recipient_keypair: Arc<dyn Signer>, confidential_transfer_amount: u64) -> Result<(), Box<dyn Error>> {
+    
+    let mut transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair, confidential_transfer_amount).await?;
+    let jito_sdk = JitoJsonRpcSDK::new("https://dallas.testnet.block-engine.jito.wtf/api/v1", None);
+
+    // Reconstruct the one transaction to add the jito tip instruction.
+    {
         let random_tip_account = jito_sdk.get_random_tip_account().await?;
         let jito_tip_account = Pubkey::from_str(&random_tip_account)?;
         let jito_tip_amount:u64 = get_max_jito_tip_amount().await?;
-        println!("jito tip amount lamports: {}", jito_tip_amount);
+        println!("Jito tip lamports: {}", jito_tip_amount);
         let jito_tip_ix = system_instruction::transfer(
             &sender_keypair.pubkey(),
             &jito_tip_account,
             jito_tip_amount,
         );
 
-        let tx1 = Transaction::new_signed_with_payer(
-            &[range_create_ix, equality_create_ix, cv_create_ix, jito_tip_ix],
-            Some(&sender_keypair.pubkey()),
-            &[
-                &sender_keypair, 
-                &range_proof_context_state_account as &dyn Signer, 
-                &equality_proof_context_state_account as &dyn Signer, 
-                &ciphertext_validity_proof_context_state_account as &dyn Signer
-            ],
-            client.get_latest_blockhash()?,
-        );
-
-        let serialized_tx1 = bs58::encode(bincode::serialize(&tx1)?).into_string();
-        let serialized_tx2 = bs58::encode(bincode::serialize(&tx2)?).into_string();
-        let serialized_tx3 = bs58::encode(bincode::serialize(&tx3)?).into_string();
-        let serialized_tx4 = bs58::encode(bincode::serialize(&tx4)?).into_string();
-        let serialized_tx5 = bs58::encode(bincode::serialize(&tx5)?).into_string();
-        let tx_bundle = json!([serialized_tx1, serialized_tx2, serialized_tx3, serialized_tx4, serialized_tx5]);
-        // UUID for the bundle
-        let uuid = None;
-
-        // Send bundle using Jito SDK
-        println!("Sending bundle with X transactions...");
-        let response = jito_sdk.send_bundle(Some(tx_bundle), uuid).await?;
-
-        // Extract bundle UUID from response
-        let bundle_uuid = response["result"]
-            .as_str()
-            .ok_or("Failed to get bundle UUID from response")?;
-        println!("Bundle sent with UUID: {}", bundle_uuid);
-
-        let bundled_signatures = confirm_bundle_status(&jito_sdk, &bundle_uuid).await?;
-
-        record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
-    }
-    else {
-        println!(
-            "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            client.send_and_confirm_transaction(&tx1)?
-        );
-        println!(
-            "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            client.send_and_confirm_transaction(&tx2)?
-        );
-        println!(
-            "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            client.send_and_confirm_transaction(&tx3)?
-        );
-
-        let signature = client.send_and_confirm_transaction(&tx4)?.to_string();
-        record_value("last_confidential_transfer_signature", &signature)?;
-        println!(
-            "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            signature
-        );
+        let client = get_rpc_client()?;
+        assert!(client.url().contains("testnet") || client.url().contains("mainnet"), "This Jito demo only works on testnet or mainnet (adjust code for custom endpoints)");
         
-        println!(
-            "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            client.send_and_confirm_transaction(&tx5)?
-        );
+        // Any transaction can be used. This one is the simplest to edit (and fits within size limits).
+        let tx3 = &mut transactions[2];
+
+        // Include instruction's accounts into the transaction (without duplicates).
+        {
+            let mut unique_pubkeys: std::collections::HashSet<_> = tx3.message.account_keys.iter().cloned().collect();
+            tx3.message.account_keys.extend(
+                jito_tip_ix
+                    .accounts
+                    .iter()
+                    .map(|account| account.pubkey)
+                    .filter(|pubkey| unique_pubkeys.insert(*pubkey))
+            );
+
+            tx3.message.account_keys.push(solana_sdk::system_program::id());
+        }
+        
+        // Include instruction into the transaction.
+        let compiled_jito_tip_ix = tx3.message.compile_instruction(&jito_tip_ix);
+        tx3.message.instructions.push(compiled_jito_tip_ix);
+
+        // Re-sign the transaction for integrity.
+        tx3.sign(&[&sender_keypair], client.get_latest_blockhash()?);
+
     }
+
+    let serialized_tx1 = bs58::encode(bincode::serialize(&transactions[0])?).into_string();
+    let serialized_tx2 = bs58::encode(bincode::serialize(&transactions[1])?).into_string();
+    let serialized_tx3 = bs58::encode(bincode::serialize(&transactions[2])?).into_string();
+    let serialized_tx4 = bs58::encode(bincode::serialize(&transactions[3])?).into_string();
+    let serialized_tx5 = bs58::encode(bincode::serialize(&transactions[4])?).into_string();
+    
+    let tx_bundle = json!([
+        serialized_tx1, 
+        serialized_tx2, 
+        serialized_tx3, 
+        serialized_tx4, 
+        serialized_tx5
+    ]);
+    
+    // UUID for the bundle
+    let uuid = None;
+
+    // Send bundle using Jito SDK
+    println!("Sending bundle with {} transactions...", transactions.len());
+    let response = jito_sdk.send_bundle(Some(tx_bundle), uuid).await?;
+
+    // Extract bundle UUID from response
+    let bundle_uuid = response["result"]
+        .as_str()
+        .ok_or("Failed to get bundle UUID from response")?;
+    println!("Bundle sent with UUID: {}", bundle_uuid);
+
+    let bundled_signatures = confirm_bundle_status(&jito_sdk, &bundle_uuid).await?;
+
+    record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
 
     Ok(())
 }
-
 /// Refactored version of spl_token_client::token::Token::confidential_transfer_create_context_state_account().
 /// Instead of sending transactions internally, this function now returns the instructions to be used externally.
 fn get_zk_proof_context_state_account_creation_instructions<
