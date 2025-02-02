@@ -140,6 +140,10 @@ async fn check_final_bundle_status(jito_sdk: &JitoJsonRpcSDK, bundle_uuid: &str)
             Some("confirmed") => {
                 println!("Bundle confirmed on-chain. Waiting for finalization...");
                 check_transaction_error(&bundle_status)?;
+                return match bundle_status.transactions {
+                    Some(transactions) => Ok(transactions),
+                    None => Err("Error retrieving transactions from finalized bundle status".into()),
+                };
             },
             Some("finalized") => {
                 println!("Bundle finalized on-chain successfully!");

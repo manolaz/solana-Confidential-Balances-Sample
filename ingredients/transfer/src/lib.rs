@@ -1,6 +1,6 @@
 use {
     keypair_utils::{
-        jito, get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, record_value
+        get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, jito, load_value, print_transaction_url, record_value
     },
     serde_json::json,
     solana_sdk::{
@@ -21,8 +21,7 @@ use {
                 elgamal::{self, ElGamalKeypair},
                 pod::elgamal::PodElGamalPubkey,
             },
-            zk_elgamal_proof_program,
-            zk_elgamal_proof_program::instruction::{close_context_state, ContextStateInfo},
+            zk_elgamal_proof_program::{self, instruction::{close_context_state, ContextStateInfo}},
         },
         state::{Account, Mint},
     },
@@ -40,30 +39,14 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     let transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair, confidential_transfer_amount).await?;
     assert!(transactions.len() == 5);
 
-    println!(
-        "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(&transactions[0])?
-    );
-    println!(
-        "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(&transactions[1])?
-    );
-    println!(
-        "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(&transactions[2])?
-    );
+    print_transaction_url("Transfer [Allocate Proof Accounts]", &client.send_and_confirm_transaction(&transactions[0])?.to_string());
+    print_transaction_url("Transfer [Encode Range Proof]", &client.send_and_confirm_transaction(&transactions[1])?.to_string());
+    print_transaction_url("Transfer [Encode Remaining Proofs]", &client.send_and_confirm_transaction(&transactions[2])?.to_string());
+    print_transaction_url("Transfer [Execute Transfer]", &client.send_and_confirm_transaction(&transactions[3])?.to_string());
+    print_transaction_url("Transfer [Close Proof Accounts]", &client.send_and_confirm_transaction(&transactions[4])?.to_string());
 
     let signature = client.send_and_confirm_transaction(&transactions[3])?.to_string();
     record_value("last_confidential_transfer_signature", &signature)?;
-    println!(
-        "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        signature
-    );
-    
-    println!(
-        "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        client.send_and_confirm_transaction(&transactions[4])?
-    );
 
     Ok(())
 
@@ -390,34 +373,16 @@ pub async fn with_split_proofs_atomic(sender_keypair: Arc<dyn Signer>, recipient
             serialized_tx4, 
             serialized_tx5
         ]);
-        
+
         let bundled_signatures = jito::submit_and_confirm_bundle(tx_bundle).await?;
-
-        record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
-
-        println!(
-            "\nTransfer [Allocate Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            bundled_signatures[0]
-        );
-        println!(
-            "\nTransfer [Encode Range Proof]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            bundled_signatures[1]
-        );
-        println!(
-            "\nTransfer [Encode Remaining Proofs]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            bundled_signatures[2]
-        );
-    
-        println!(
-            "\nTransfer [Execute Transfer]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            bundled_signatures[3]
-        );
+        print_transaction_url("Transfer [Allocate Proof Accounts]", &bundled_signatures[0]);
+        print_transaction_url("Transfer [Encode Range Proof]", &bundled_signatures[1]);
+        print_transaction_url("Transfer [Encode Remaining Proofs]", &bundled_signatures[2]);
+        print_transaction_url("Transfer [Execute Transfer]", &bundled_signatures[3]);
+        print_transaction_url("Transfer [Close Proof Accounts]", &bundled_signatures[4]);
         
-        println!(
-            "\nTransfer [Close Proof Accounts]: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-            bundled_signatures[4]
-        );
-
+        record_value("last_confidential_transfer_signature", &bundled_signatures[3])?;
+    
         Ok(())
     }).await
 }

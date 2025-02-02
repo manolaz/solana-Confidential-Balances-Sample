@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client, load_value};
+use keypair_utils::{get_or_create_keypair, get_rpc_client, load_value, print_transaction_url};
 use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::extension::confidential_transfer::instruction::deposit;
@@ -40,9 +40,6 @@ pub async fn deposit_tokens(deposit_amount: u64, depositor_signer: &dyn Signer) 
 
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nDeposit Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    print_transaction_url("Deposit Tokens", &transaction_signature.to_string());
     Ok(())
 }

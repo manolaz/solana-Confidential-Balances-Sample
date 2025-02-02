@@ -1,7 +1,7 @@
 use std::{error::Error, sync::Arc};
 
 use keypair_utils::{
-    get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value,
+    get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, print_transaction_url,
 };
 use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::get_associated_token_address_with_program_id;
@@ -101,9 +101,6 @@ pub async fn apply_pending_balance(
 
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nApply Pending Balance: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    print_transaction_url("Apply Pending Balance", &transaction_signature.to_string());
     Ok(())
 }

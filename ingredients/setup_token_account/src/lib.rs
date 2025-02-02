@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client};
+use keypair_utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
 use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
@@ -107,10 +107,7 @@ pub async fn setup_token_account(
 
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nCreate Token Account: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    print_transaction_url("Create Token Account", &transaction_signature.to_string());
 
     Ok(())
 }

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client};
+use keypair_utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
 use solana_sdk::{
     instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
     transaction::Transaction,
@@ -104,9 +104,6 @@ pub async fn go(
 
     let transaction_signature = client.send_and_confirm_transaction(&transaction)?;
 
-    println!(
-        "\nMint Tokens: https://explorer.solana.com/tx/{}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899",
-        transaction_signature
-    );
+    print_transaction_url("Mint Tokens", &transaction_signature.to_string());
     Ok(())
 }

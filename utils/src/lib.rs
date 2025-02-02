@@ -6,7 +6,7 @@ use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::signer::Signer;
 use solana_zk_sdk::encryption::auth_encryption::AeKey;
 use solana_zk_sdk::encryption::elgamal::{ElGamalKeypair, ElGamalSecretKey};
-use std::{env, string};
+use std::env;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
