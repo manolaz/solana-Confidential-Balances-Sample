@@ -13,6 +13,7 @@ use std::io::Write;
 use dotenvy;
 
 pub mod gcp;
+pub mod jito;
 
 pub const ENV_FILE_PATH: &str = "../.env";
 
