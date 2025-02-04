@@ -114,7 +114,8 @@ Instruction order matters. See [Failing complex operations](#failing-complex-ope
 Unlike the [`Deposit`](#deposit) operation, where only the sender is involved, the [`Apply`](#apply) operation requires action from the receiver and cannot be automated. 
 
 When a token account's pending balance is modified, it increases the pending balance queue. This queue can be monitored for changes. If an account has a `Pending Balance Credit Counter` greater than 0, the wallet UI can handle the notification in distinct ways:
-- Non-custodial wallets: Prompt the end user with a predefined [`Apply`](#apply) transaction for signing.
+- Non-custodial wallets: 
+    - Prompt the end user with a predefined [`Apply`](#apply) transaction for signing.
 - Custodial wallets (multiple options):
     - Same as above.
     - Automatically apply the pending balance on behalf of the user.
@@ -151,6 +152,14 @@ Extensions:
 ```
 
 ### Withdraw
+```mermaid
+    sequenceDiagram
+
+    participant BB as "Receiver Token Account"
+    participant B as "Receiver"
+
+    B->>BB: Withdraw
+```
 A complex operation requiring multiple instructions:
 
 1. Create a `range` zk proof account.
@@ -171,7 +180,7 @@ While front end presentation for confidential balances can be consistent across 
 When deciding on an approach compatible with your wallet project, here are some trade-offs to consider:
 
 ### Failing complex operations
-For a technicalillustration of operation complexity, refer to the [Basic Transfer Recipe](/docs/recipes.md#L24) diagram.
+For a technical illustration of operation complexity, refer to the [Basic Transfer Recipe](/docs/recipes.md#L24) diagram.
 
 The execution of [`Transfer`](#transfer) and [`Withdraw`](#withdraw) transactions can fail for several reasons:
 - Transaction becomes stale while awaiting confirmation.
@@ -187,20 +196,21 @@ The execution of [`Transfer`](#transfer) and [`Withdraw`](#withdraw) transaction
   - Incorrect zk proof account initialization.
 
 Since these operations progressively create new state, we need a way to reconcile the state in case of failure.  
-There are three general strategies:
+There are two general strategies:
 
 #### Atomic
 Use an all-or-nothing approach with Jito Bundles. When the operation is at most five transactions, they can be bundled.
 Bundles guarantee transaction order and atomicity. This approach has it's own trade-offs:
+  - Landing the bundle on-chain is not guaranteed.
     - Failing one transaction fails the entire bundle.
-    - Landing the bundle on-chain is not guaranteed.
-    - Retrying a bundle requires re-signing all bundled transactions if blockhash expires.
+    - Retrying a bundle requires re-signing all bundled transactions, preventing blockhash expiration.
+  - Jito Bundles are only supported by a subset of Solana validators, potentially delaying bundle confirmation.
 
 See an example of [atomic transfer in the recipes](/recipes/src/lib.rs#L90).
 
 #### Non-Atomic
 Foregoing atomicity allows for more flexible transaction handling, but requires additional logic to handle failures.
-The general approach is to track operation progress within the wallet, always knowing which transactions have been executed so far.
+The general approach is to track operation progress within the wallet, always knowing which transactions have been executed so far. This 
 Upon transaction failure, there are two recourses:
 
 *Abort (roll-back):*  
