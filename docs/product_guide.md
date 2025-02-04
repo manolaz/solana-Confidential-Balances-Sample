@@ -66,6 +66,23 @@ There are two ways to try your first confidential transfer:
     - Extended set of operations from the CLI menu with easy tweaking and experimentation.
 
 Regardless of method you will find yourself conducting the same key operations:
+```mermaid
+    sequenceDiagram
+
+    participant A as "Sender"
+    participant AA as "Sender Token Account"
+    participant BB as "Receiver Token Account"
+    participant B as "Receiver"
+
+    A->>AA: Deposit
+    A->>AA: Apply
+
+    AA->>BB: Transfer
+    B->>BB: Apply
+
+    B->>BB: Withdraw
+
+```
 - Deposit:
     - Confidentializes a token account's balance by storing the amount in an encrypted form.
     - Deposit amount is set to a pending state.
@@ -85,5 +102,5 @@ Read more about [pending & available balances](https://spl.solana.com/confidenti
 ## Specialized Guides
 - [Block Explorers](block_explorers.md)
 - [Auditor Rotation](auditor_rotation.md)
-- Wallets
+- [Wallets](wallet_guide.md)
 - [FAQ](FAQ.md)
