@@ -229,4 +229,5 @@ Leaving the operation stale leaves SOL on the table, as closing accounts recover
 Context state accounts are the most reliable approach for Confidential Balances because they can accomodate more zk proof data (max 10MB).  
 However, small-enough proofs can be included within the transaction instruction - eliminating the need for a state account.
 
-If you're looking to reduce the total number of transactions, consider including proofs within the transaction instruction.
+If you're looking to reduce the total number of transactions, consider .including proofs within the transaction instruction.  
+See an [example when extending the sender/receiver token accounts for confidential transfers](/ingredients/setup_token_account/src/lib.rs#L72-L77).
