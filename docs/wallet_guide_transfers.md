@@ -1,21 +1,40 @@
 # Transfers
 
-Table of Contents:
-- [Main Interactions (without Confidential MintBurn)](#main-interactions-without-confidential-mintburn)
-    - [Apply](#apply)
-    - [Deposit](#deposit)
-    - [Transfer](#transfer)
-    - [Withdraw](#withdraw)
-- [Main Interactions (with ConfidentialMintBurn)](#main-interactions-with-confidentialmintburn)
-- [Trade-offs](#trade-offs)
-    - [Failing complex operations](#failing-complex-operations)
-        - [Atomic](#atomic)
-        - [Non-Atomic](#non-atomic)
-  - [Zk Proof location: State Account vs Instruction](#zk-proof-location-state-account-vs-instruction)
+## Product Flows 
+Flows assume Bob and Alice token accounts are already extended to support confidential transfers.  
+For initializing token accounts, see [wallet setup](/docs/wallet_guide_setup.md).
+
+
+```mermaid
+    sequenceDiagram
+    participant A as "Alice"
+    participant AW as "Alice Wallet App"
+    participant BW as "Bob Wallet App"
+    participant B as "Bob"
+
+    A->>AW: Send Bob 10 CTKN
+
+    alt Manual
+    BW->>B: Notify of pending balance (10 CTKN)
+    B->>BW: Apply pending amounts
+    else Automated
+    BW->>BW: Detect and Apply pending balance
+    end
+```
+- With one transaction signing prompt, Alice sends Bob 10 CTKN.
+  - Frontend determines where to source sufficiently available funds from:
+    - Public balance (requires Deposit operation)
+    - Confidential balance
+      - Available balance
+      - Pending balance (requires Apply operation)
+- Bob must independently apply pending amounts.
+    - Wallet can prompt Bob with notifications.
+    - Custodial wallets can automate Apply operation for Bob.
+      - Only token account authority can sign an Apply operation.
 
 
 ## Main Interactions (without Confidential MintBurn)
-A conceptual flow for an end-to-end confidential transfer, from a user interaction perspective.
+A conceptual flow for an end-to-end confidential transfer, from a technical operations perspective.
 ```mermaid
     sequenceDiagram
 
