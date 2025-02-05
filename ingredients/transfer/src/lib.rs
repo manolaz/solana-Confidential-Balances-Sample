@@ -42,11 +42,11 @@ pub async fn with_split_proofs(sender_keypair: Arc<dyn Signer>, recipient_keypai
     print_transaction_url("Transfer [Allocate Proof Accounts]", &client.send_and_confirm_transaction(&transactions[0])?.to_string());
     print_transaction_url("Transfer [Encode Range Proof]", &client.send_and_confirm_transaction(&transactions[1])?.to_string());
     print_transaction_url("Transfer [Encode Remaining Proofs]", &client.send_and_confirm_transaction(&transactions[2])?.to_string());
-    print_transaction_url("Transfer [Execute Transfer]", &client.send_and_confirm_transaction(&transactions[3])?.to_string());
+    let transfer_signature = client.send_and_confirm_transaction(&transactions[3])?;
+    print_transaction_url("Transfer [Execute Transfer]", &transfer_signature.to_string());
     print_transaction_url("Transfer [Close Proof Accounts]", &client.send_and_confirm_transaction(&transactions[4])?.to_string());
 
-    let signature = client.send_and_confirm_transaction(&transactions[3])?.to_string();
-    record_value("last_confidential_transfer_signature", &signature)?;
+    record_value("last_confidential_transfer_signature", &transfer_signature.to_string())?;
 
     Ok(())
 
