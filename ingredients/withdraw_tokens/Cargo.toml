@@ -10,4 +10,4 @@ spl-token-2022 = { workspace = true }
 spl-associated-token-account = { workspace = true }
 spl-token-confidential-transfer-proof-generation = { workspace = true }
 
-keypair_utils = { path = "../../utils" }
+utils = { path = "../../utils" }

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-keypair_utils = { path = "../../utils" }
+utils = { path = "../../utils" }
 solana-sdk = { workspace = true }
 spl-token-2022 = { workspace = true }
 spl-associated-token-account = { workspace = true }

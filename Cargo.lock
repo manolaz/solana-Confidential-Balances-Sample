@@ -144,11 +144,11 @@ checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 name = "apply_pending_balance"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-client",
+ "utils",
 ]
 
 [[package]]
@@ -1166,10 +1166,10 @@ checksum = "0e60eed09d8c01d3cee5b7d30acb059b76614c918fa0f992e0dd6eeb10daad6f"
 name = "deposit_tokens"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
+ "utils",
 ]
 
 [[package]]
@@ -1811,12 +1811,12 @@ name = "global_auditor_assert"
 version = "0.1.0"
 dependencies = [
  "bs58 0.5.1",
- "keypair_utils",
  "solana-client",
  "solana-sdk",
  "solana-transaction-status-client-types",
  "spl-token-2022 7.0.0",
  "spl-token-confidential-transfer-proof-generation 0.3.0",
+ "utils",
 ]
 
 [[package]]
@@ -2678,25 +2678,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "keypair_utils"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "bs58 0.5.1",
- "dotenvy",
- "google-cloud-kms",
- "jito-sdk-rust",
- "reqwest 0.12.12",
- "serde",
- "serde_json",
- "solana-client",
- "solana-sdk",
- "solana-zk-sdk",
- "tk-rs",
- "tokio",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2903,12 +2884,12 @@ dependencies = [
 name = "mint_tokens"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "solana-zk-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-confidential-transfer-proof-extraction 0.2.1",
+ "utils",
 ]
 
 [[package]]
@@ -3801,7 +3782,6 @@ dependencies = [
  "apply_pending_balance",
  "deposit_tokens",
  "global_auditor_assert",
- "keypair_utils",
  "mint_tokens",
  "setup_mint",
  "setup_mint_confidential",
@@ -3811,6 +3791,7 @@ dependencies = [
  "solana-zk-sdk",
  "tokio",
  "transfer",
+ "utils",
  "withdraw_tokens",
 ]
 
@@ -4377,41 +4358,41 @@ dependencies = [
 name = "setup_mint"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-token-2022 7.0.0",
  "spl-token-client",
+ "utils",
 ]
 
 [[package]]
 name = "setup_mint_confidential"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-token-2022 7.0.0",
  "spl-token-client",
+ "utils",
 ]
 
 [[package]]
 name = "setup_participants"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "tokio",
+ "utils",
 ]
 
 [[package]]
 name = "setup_token_account"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-confidential-transfer-proof-extraction 0.2.1",
  "tokio",
+ "utils",
 ]
 
 [[package]]
@@ -8049,7 +8030,6 @@ dependencies = [
  "bs58 0.5.1",
  "bytemuck",
  "jito-sdk-rust",
- "keypair_utils",
  "serde_json",
  "solana-sdk",
  "solana-zk-sdk",
@@ -8058,6 +8038,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-confidential-transfer-proof-extraction 0.2.1",
  "spl-token-confidential-transfer-proof-generation 0.3.0",
+ "utils",
 ]
 
 [[package]]
@@ -8207,6 +8188,25 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bs58 0.5.1",
+ "dotenvy",
+ "google-cloud-kms",
+ "jito-sdk-rust",
+ "reqwest 0.12.12",
+ "serde",
+ "serde_json",
+ "solana-client",
+ "solana-sdk",
+ "solana-zk-sdk",
+ "tk-rs",
+ "tokio",
+]
 
 [[package]]
 name = "valuable"
@@ -8652,12 +8652,12 @@ dependencies = [
 name = "withdraw_tokens"
 version = "0.1.0"
 dependencies = [
- "keypair_utils",
  "solana-sdk",
  "spl-associated-token-account 6.0.0",
  "spl-token-2022 7.0.0",
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation 0.3.0",
+ "utils",
 ]
 
 [[package]]

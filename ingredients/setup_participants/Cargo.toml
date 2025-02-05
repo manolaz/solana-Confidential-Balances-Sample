@@ -8,6 +8,6 @@ name = "setup_participants"
 path = "src/lib.rs"
 
 [dependencies]
-keypair_utils = { path = "../../utils" }
+utils = { path = "../../utils" }
 tokio = { workspace = true }
 solana-sdk = { workspace = true }

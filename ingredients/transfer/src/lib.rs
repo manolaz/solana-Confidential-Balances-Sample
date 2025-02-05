@@ -1,5 +1,5 @@
 use {
-    keypair_utils::{
+    utils::{
         get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, jito, load_value, print_transaction_url, record_value
     },
     serde_json::json,
@@ -322,7 +322,7 @@ pub async fn with_split_proofs_atomic(sender_keypair: Arc<dyn Signer>, recipient
     // - We never know if the leading validator is running the Jito engine.
 
     // We'll do a best attempt at retrying the bundle.
-    keypair_utils::run_with_retry(5, || async {
+    utils::run_with_retry(5, || async {
 
         let mut transactions = prepare_transactions(sender_keypair.clone(), recipient_keypair.clone(), confidential_transfer_amount).await?;
 

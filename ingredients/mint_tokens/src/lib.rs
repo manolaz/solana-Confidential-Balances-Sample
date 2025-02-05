@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
+use utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
 use solana_sdk::{
     instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
     transaction::Transaction,

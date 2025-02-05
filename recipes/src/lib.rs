@@ -5,7 +5,7 @@ mod recipe {
 
     use apply_pending_balance;
     use deposit_tokens;
-    use keypair_utils::{get_or_create_keypair, get_or_create_keypair_elgamal};
+    use utils::{get_or_create_keypair, get_or_create_keypair_elgamal};
     use mint_tokens;
     use setup_mint;
     use setup_mint_confidential;
@@ -139,7 +139,7 @@ mod recipe {
             sender_signer,
             _sender_aes_key,
             _sender_elgamal_keypair
-        ) = keypair_utils::get_turnkey_signers_from_env(
+        ) = utils::get_turnkey_signers_from_env(
             "TURNKEY_SENDER_PRIVATE_KEY_ID",
             "TURNKEY_SENDER_PUBLIC_KEY"
         )?;
@@ -148,7 +148,7 @@ mod recipe {
             recipient_signer,
             _recipient_aes_key,
             _recipient_elgamal_keypair
-        ) = keypair_utils::get_turnkey_signers_from_env(
+        ) = utils::get_turnkey_signers_from_env(
             "TURNKEY_RECEIVER_PRIVATE_KEY_ID",
             "TURNKEY_RECEIVER_PUBLIC_KEY"
         )?;
@@ -201,8 +201,8 @@ mod recipe {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn basic_transfer_recipe_gcp() -> Result<(), Box<dyn Error>> {
-        let sender_signer = keypair_utils::get_gcp_signer_from_env("projects/cookbook-448105/locations/us-west1/keyRings/test/cryptoKeys/first_key/cryptoKeyVersions/1").await?;
-        let recipient_signer = keypair_utils::get_gcp_signer_from_env("projects/cookbook-448105/locations/us-west1/keyRings/test/cryptoKeys/second_key/cryptoKeyVersions/1").await?;
+        let sender_signer = utils::get_gcp_signer_from_env("projects/cookbook-448105/locations/us-west1/keyRings/test/cryptoKeys/first_key/cryptoKeyVersions/1").await?;
+        let recipient_signer = utils::get_gcp_signer_from_env("projects/cookbook-448105/locations/us-west1/keyRings/test/cryptoKeys/second_key/cryptoKeyVersions/1").await?;
 
         let recipient_signer = Arc::new(recipient_signer);
         let sender_signer = Arc::new(sender_signer);

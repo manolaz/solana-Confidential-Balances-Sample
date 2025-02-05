@@ -1,5 +1,5 @@
 use {
-    keypair_utils::{get_or_create_keypair, get_rpc_client, record_value},
+    utils::{get_or_create_keypair, get_rpc_client, record_value},
     solana_sdk::{
         signature::Keypair, signer::Signer, system_instruction::create_account,
         transaction::Transaction,

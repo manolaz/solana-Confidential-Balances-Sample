@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
+use utils::{get_or_create_keypair, get_rpc_client, print_transaction_url};
 use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
@@ -115,7 +115,7 @@ pub async fn setup_token_account(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use keypair_utils::get_or_create_keypair;
+    use utils::get_or_create_keypair;
     #[tokio::test]
     async fn test_setup_token_account() -> Result<(), Box<dyn Error>> {
         let sender_keypair = get_or_create_keypair("sender_keypair")?;

@@ -1,5 +1,5 @@
+use utils::get_rpc_client;
 use {
-    keypair_utils::get_rpc_client,
     solana_sdk::{
         pubkey::Pubkey, signature::Keypair
     },
@@ -39,7 +39,7 @@ pub async fn setup_basic_participant(participant_pubkey: &Pubkey, fee_payer_keyp
 #[cfg(test)]
 mod tests {
     use super::*;
-    use keypair_utils::get_or_create_keypair;
+    use utils::get_or_create_keypair;
     use solana_sdk::signer::Signer;
     use solana_sdk::native_token::LAMPORTS_PER_SOL;
 

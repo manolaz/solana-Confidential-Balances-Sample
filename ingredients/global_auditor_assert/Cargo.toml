@@ -10,5 +10,5 @@ solana-transaction-status-client-types = { workspace = true }
 spl-token-2022 = { workspace = true }
 spl-token-confidential-transfer-proof-generation = { workspace = true }
 
-keypair_utils = { path = "../../utils" }
+utils = { path = "../../utils" }
 bs58 = { workspace = true }

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use keypair_utils::{get_or_create_keypair, get_rpc_client, load_value, print_transaction_url};
+use utils::{get_or_create_keypair, get_rpc_client, load_value, print_transaction_url};
 use solana_sdk::{signer::Signer, transaction::Transaction};
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::extension::confidential_transfer::instruction::deposit;

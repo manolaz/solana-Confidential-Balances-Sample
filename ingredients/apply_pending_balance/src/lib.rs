@@ -1,6 +1,6 @@
 use std::{error::Error, sync::Arc};
 
-use keypair_utils::{
+use utils::{
     get_non_blocking_rpc_client, get_or_create_keypair, get_rpc_client, load_value, print_transaction_url,
 };
 use solana_sdk::{signer::Signer, transaction::Transaction};

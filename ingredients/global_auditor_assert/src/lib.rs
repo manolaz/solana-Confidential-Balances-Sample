@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr};
 
-use keypair_utils::{get_rpc_client, load_value};
+use utils::{get_rpc_client, load_value};
 use bs58;
 use solana_client::rpc_config::RpcTransactionConfig;
 use solana_transaction_status_client_types::{

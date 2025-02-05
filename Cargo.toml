@@ -3,15 +3,8 @@ resolver = "2"
 members = [
     "utils",
     "recipes",
-    "ingredients/setup_mint",
-    "ingredients/setup_participants",
-    "ingredients/setup_token_account",
-    "ingredients/mint_tokens",
-    "ingredients/deposit_tokens",
-    "ingredients/apply_pending_balance",
-    "ingredients/transfer",
-    "ingredients/withdraw_tokens"
-, "ingredients/global_auditor_assert", "ingredients/setup_mint_confidential"]
+    "ingredients/*"
+]
 
 [workspace.dependencies]
 # Solana dependencies

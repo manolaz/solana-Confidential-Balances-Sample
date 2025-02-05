@@ -1,5 +1,5 @@
 use {
-    keypair_utils::{get_non_blocking_rpc_client, get_or_create_keypair, load_value, print_transaction_url},
+    utils::{get_non_blocking_rpc_client, get_or_create_keypair, load_value, print_transaction_url},
     solana_sdk::
         signature::{Keypair, Signer}
     ,

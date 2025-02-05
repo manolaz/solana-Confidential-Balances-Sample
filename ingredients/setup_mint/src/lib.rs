@@ -1,5 +1,5 @@
 use {
-    keypair_utils::{get_or_create_keypair, get_rpc_client, print_transaction_url, record_value}, solana_sdk::{
+    utils::{get_or_create_keypair, get_rpc_client, print_transaction_url, record_value}, solana_sdk::{
         signature::Keypair, signer::Signer, system_instruction::create_account, transaction::Transaction
     }, spl_token_2022::{extension::ExtensionType, instruction::initialize_mint, solana_zk_sdk::encryption::elgamal::ElGamalKeypair, state::Mint}, spl_token_client::token::ExtensionInitializationParams, std::{error::Error, sync::Arc}
 };
