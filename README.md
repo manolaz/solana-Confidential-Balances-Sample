@@ -5,7 +5,7 @@
 
 A collection of ingredients (tests) and recipes (test sequences) demonstrating Solana confidential transfer patterns.  
 
-Examples in this repository are standalone demonstrations of confidential transfer flows, similar to those found in the [Token Program CLI](https://github.com/solana-labs/solana-program-library/tree/master/token/cli).
+Examples in this repository are standalone demonstrations of confidential transfer flows, similar to those found in the [Token Program CLI](https://github.com/solana-program/token-2022/tree/969cff212c0e0add812932e50f6771933f14ff5c/clients/cli).
 
 Use this as a guide to implement confidential balances in your own applications.  
 Although the API is still work-in-progress, the usage patterns remain stable.
