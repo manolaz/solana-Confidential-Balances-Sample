@@ -18,5 +18,3 @@ Although the API is still work-in-progress, the usage patterns remain stable.
 ### [Project Structure](docs/project_structure.md)
 
 ### [Recipes](docs/recipes.md)
-
-### [Open Questions](docs/open_questions.md)
