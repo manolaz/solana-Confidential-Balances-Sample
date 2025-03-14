@@ -55,7 +55,9 @@ Developers interfacing with Confidential Balances need to set up a typical [Sola
 ## Try It Out
 There are two ways to try your first confidential transfer:
 - Beginner: [Token CLI Quickstart Guide](https://spl.solana.com/confidential-token/quickstart)
-    - Minimal setup and requires no code to execute.
+    - Minimum requirements:
+        - solana-cli 2.1.13 (src:67412607; feat:1725507508, client:Agave)
+        - spl-token-cli 5.1.0
     - Provides all basic functionality to operate a confidential token.
     - Fixed set of operations from the CLI menu.
     - Use [this provided shell script](https://github.com/solana-program/token-2022/blob/main/clients/cli/examples/confidential-transfer.sh) to execute an end-to-end confidential transfer.
