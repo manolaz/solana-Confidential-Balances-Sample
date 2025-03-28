@@ -2,8 +2,10 @@
 
 ## Introduction
 Confidential Balances is a set of Token2022 extensions that enable privacy on Solana asset transfers. The set of extensions is comprised of:
-- [Confidential Transfer]
-- [Confidential MintBurn](https://github.com/solana-labs/solana-program-library/issues/6879)
+- [Confidential Transfer](https://github.com/solana-program/token-2022/tree/main/program/src/extension/confidential_transfer)
+- [Confidential Transfer Fee](https://github.com/solana-program/token-2022/tree/main/program/src/extension/confidential_transfer_fee)
+- [Confidential MintBurn](https://github.com/solana-program/token-2022/tree/main/program/src/extension/confidential_mint_burn)
+  - [Motivation](https://github.com/solana-labs/solana-program-library/issues/6879)
 
 Instead of an all-or-nothing approach, these token extensions allow varying degrees of configurable privacy. You can transfer tokens with increasing levels of confidentiality:
 1. Disabled confidentiality.
@@ -99,10 +101,10 @@ Regardless of method you will find yourself conducting the same key operations:
 - Apply:
     - Reconciles all pending amounts to credit/debit public token balance & available confidential balance.
 
-Read more about [pending & available balances](https://spl.solana.com/confidential-token/deep-dive/encryption#account-state).
+Read more about [pending & available balances](https://www.solana-program.com/docs/confidential-balances/encryption#account-state).
 
 ## Specialized Guides
 - [Block Explorers](block_explorers.md)
-- [Auditor Rotation](auditor_rotation.md)
 - [Wallets](wallet_guide.md)
-- [FAQ](FAQ.md)
+- [Exchanges](exchanges_guide.md)
+- [Token Issuers](issuers_guide.md)
