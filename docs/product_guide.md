@@ -50,9 +50,6 @@ flowchart TB
 
 Developers interfacing with Confidential Balances need to set up a typical [Solana development environment](https://solana.com/docs/intro/installation#install-dependencies), or at the bare minimum, the latest version of the [Solana CLI](https://solana.com/docs/intro/installation#install-the-solana-cli).
 
-> 🚧 **Notice:**  
-> `Token2022` & `ElGamal Proof` programs work together for confidential transfers and require compatible versions. At the time of writing Devnet meets this requirement, while Mainnet has a pending upgrade for `Token2022` to support confidential transfers which lands in Q1 2025.
-
 
 ## Try It Out
 There are two ways to try your first confidential transfer:
