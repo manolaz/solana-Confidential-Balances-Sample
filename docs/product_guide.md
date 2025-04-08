@@ -103,5 +103,3 @@ Read more about [pending & available balances](https://www.solana-program.com/do
 ## Specialized Guides
 - [Block Explorers](block_explorers.md)
 - [Wallets](wallet_guide.md)
-- [Exchanges](exchanges_guide.md)
-- [Token Issuers](issuers_guide.md)
