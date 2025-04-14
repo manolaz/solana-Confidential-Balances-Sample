@@ -7,22 +7,31 @@
 Use the [.env.example](../.env.example) file to create a `.env` file.
 This is the bare minimum setup to run the recipes.
 
-Note: The `.env` file will be overwritten during test runs to save generated data allowing you to re-run recipes without re-generating data.
+## Environment File Behavior
+This project uses two environment files:
 
-## .env File Behavior
-The `.env` file in this project has a unique behavior compared to standard `.env` files:
+1. **`.env`**: Contains initial configuration values that remain unchanged during runtime.
 
-1. **Dynamic Updates**: The file is updated during recipe execution (particularly in `basic_transfer_recipe`) to serialize transaction results for post-run inspection.
+2. **`runtime_output.env`**: Generated during execution to store all runtime values and execution results.
 
-2. **Reusability**: This approach enables:
+This approach provides several advantages:
+
+1. **Clean Separation**: The original `.env` configuration remains untouched during recipe execution.
+
+2. **Runtime Value Storage**: All dynamically generated values (keypairs, transaction results, etc.) are serialized to `runtime_output.env`.
+
+3. **Prioritized Loading**: When a recipe or ingredient runs:
+   - Values are first searched for in `runtime_output.env` (from prior executions)
+   - If not found, the system falls back to the original `.env` file
+   - If not found in either, a new value is generated and stored in `runtime_output.env`
+
+4. **Reusability**: This approach enables:
    - Running individual ingredients in isolation using data from prior recipe runs
    - Collecting all resulting private keys from a single recipe execution
 
-3. **Overwrite Behavior**: Recipes are programmed to overwrite values on every run. For maximum predictability:
-   - Clear any extra variables not found in `.env.example`
-   - This is analogous to a `build clean` in typical project build configurations
+5. **Reset Capability**: To reset to a clean state, simply delete `runtime_output.env`
 
-This behavior is implemented using the [dotenvy](https://github.com/allan2/dotenvy) crate's [modifying API](https://github.com/allan2/dotenvy/blob/main/README.md#modifying-api).
+This behavior is implemented using the [dotenvy](https://github.com/allan2/dotenvy) crate.
 
 ## Test Commands
 

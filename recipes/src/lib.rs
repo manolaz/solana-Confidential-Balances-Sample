@@ -135,20 +135,12 @@ mod recipe {
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn basic_transfer_recipe_turnkey() -> Result<(), Box<dyn Error>> {
 
-        let (
-            sender_signer,
-            _sender_aes_key,
-            _sender_elgamal_keypair
-        ) = utils::get_turnkey_signers_from_env(
+        let sender_signer = utils::get_turnkey_signers_from_env(
             "TURNKEY_SENDER_PRIVATE_KEY_ID",
             "TURNKEY_SENDER_PUBLIC_KEY"
         )?;
 
-        let (
-            recipient_signer,
-            _recipient_aes_key,
-            _recipient_elgamal_keypair
-        ) = utils::get_turnkey_signers_from_env(
+        let recipient_signer = utils::get_turnkey_signers_from_env(
             "TURNKEY_RECEIVER_PRIVATE_KEY_ID",
             "TURNKEY_RECEIVER_PUBLIC_KEY"
         )?;

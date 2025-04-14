@@ -16,27 +16,44 @@ pub mod gcp;
 pub mod jito;
 
 pub const ENV_FILE_PATH: &str = "../.env";
+pub const RUNTIME_ENV_FILE_PATH: &str = "../runtime_output.env";
 
 // Get or create a keypair from an .env file
 pub fn get_or_create_keypair(variable_name: &str) -> Result<Keypair, Box<dyn Error>> {
+    // First check runtime_output.env if it exists
+    if std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+        dotenvy::from_filename_override(RUNTIME_ENV_FILE_PATH).ok();
+        if let Ok(secret_key_string) = env::var(variable_name) {
+            // Try to parse from runtime_output.env
+            let decoded_secret_key: Vec<u8> = serde_json::from_str(&secret_key_string)?;
+            return Ok(Keypair::from_bytes(&decoded_secret_key)?);
+        }
+    }
+    
+    // Then check original .env
     dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     match env::var(variable_name) {
         Ok(secret_key_string) => {
-            // Fallback to JSON format
+            // Parse from .env
             let decoded_secret_key: Vec<u8> = serde_json::from_str(&secret_key_string)?;
             Ok(Keypair::from_bytes(&decoded_secret_key)?)
         }
         Err(_) => {
-            // Create a new keypair if the environment variable is not found
+            // Create a new keypair if the environment variable is not found in either file
             let keypair = Keypair::new();
 
-            // Convert secret key to Vec<u8> and then to JSON, append to .env file
+            // Convert secret key to Vec<u8> and then to JSON, append to runtime_output.env file
             let secret_key_bytes = Vec::from(keypair.to_bytes());
             let json_secret_key = serde_json::to_string(&secret_key_bytes)?;
 
-            // Open .env file, create it if it does not exist
-            let mut file = OpenOptions::new().append(true).create(true).open(ENV_FILE_PATH)?;
+            // Create runtime_output.env if it doesn't exist
+            if !std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+                std::fs::File::create(RUNTIME_ENV_FILE_PATH)?;
+            }
+
+            // Open runtime_output.env file, create it if it does not exist
+            let mut file = OpenOptions::new().append(true).create(true).open(RUNTIME_ENV_FILE_PATH)?;
 
             writeln!(file, "{}={}", variable_name, json_secret_key)?;
 
@@ -57,6 +74,17 @@ pub fn get_turnkey_signer(private_key_id_env: &str, public_key_env: &str) -> Res
 
 
 pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypair, Box<dyn Error>> {
+    // First check runtime_output.env if it exists
+    if std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+        dotenvy::from_filename_override(RUNTIME_ENV_FILE_PATH).ok();
+        if let Ok(secret_key_string) = env::var(variable_name) {
+            // Try to parse from runtime_output.env
+            let decoded_secret_key: Vec<u8> = serde_json::from_str(&secret_key_string)?;
+            return Ok(ElGamalKeypair::new(ElGamalSecretKey::from_seed(&decoded_secret_key)?));
+        }
+    }
+    
+    // Then check original .env
     dotenvy::from_filename_override(ENV_FILE_PATH).ok();
 
     match env::var(variable_name) {
@@ -67,12 +95,17 @@ pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypa
         Err(_) => {
             let keypair = ElGamalKeypair::new_rand();
             
-            // Convert secret key to Vec<u8> and then to JSON, append to .env file
+            // Convert secret key to Vec<u8> and then to JSON, append to runtime_output.env file
             let secret_key_bytes = Vec::from(keypair.secret().as_bytes());
             let json_secret_key = serde_json::to_string(&secret_key_bytes)?;
 
-            // Open .env file, create it if it does not exist
-            let mut file = OpenOptions::new().append(true).create(true).open(ENV_FILE_PATH)?;
+            // Create runtime_output.env if it doesn't exist
+            if !std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+                std::fs::File::create(RUNTIME_ENV_FILE_PATH)?;
+            }
+
+            // Open runtime_output.env file, create it if it does not exist
+            let mut file = OpenOptions::new().append(true).create(true).open(RUNTIME_ENV_FILE_PATH)?;
 
             writeln!(file, "{}={}", variable_name, json_secret_key)?;
 
@@ -82,13 +115,16 @@ pub fn get_or_create_keypair_elgamal(variable_name: &str) -> Result<ElGamalKeypa
 }
 
 pub fn record_value<'a, T: serde::Serialize>(variable_name: &str, value: T) -> Result<T, Box<dyn Error>> {
-    dotenvy::from_filename_override(ENV_FILE_PATH).ok();
-
     // Serialize the value to a JSON string
     let json_value = serde_json::to_string(&value)?;
 
-    // Read the existing .env file content
-    let mut content = std::fs::read_to_string(ENV_FILE_PATH).unwrap_or_default();
+    // Create runtime_output.env if it doesn't exist
+    if !std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+        std::fs::File::create(RUNTIME_ENV_FILE_PATH)?;
+    }
+
+    // Read the existing runtime_output.env file content
+    let mut content = std::fs::read_to_string(RUNTIME_ENV_FILE_PATH).unwrap_or_default();
 
     // Remove any existing line with the same variable name
     content = content
@@ -100,16 +136,36 @@ pub fn record_value<'a, T: serde::Serialize>(variable_name: &str, value: T) -> R
     // Append the new variable value
     content.push_str(&format!("\n{}={}", variable_name, json_value));
 
-    // Write the updated content back to the .env file
-    std::fs::write(ENV_FILE_PATH, content)?;
+    // Write the updated content back to the runtime_output.env file
+    std::fs::write(RUNTIME_ENV_FILE_PATH, content)?;
 
     Ok(value)
 }
 
 pub fn load_value<T: serde::de::DeserializeOwned>(variable_name: &str) -> Result<T, Box<dyn Error>> {
-    // Reload the .env file to ensure the latest values are loaded
+    // First try to load from runtime_output.env
+    if std::path::Path::new(RUNTIME_ENV_FILE_PATH).exists() {
+        dotenvy::from_filename_override(RUNTIME_ENV_FILE_PATH).ok();
+        if let Ok(env_value) = env::var(variable_name) {
+            // Try to deserialize the JSON string to the object
+            let value: Result<T, _> = serde_json::from_str(&env_value);
+            
+            // If deserialization succeeds, return the value
+            if let Ok(val) = value {
+                return Ok(val);
+            }
+            
+            // Try to parse as a plain string
+            let plain_value: Result<T, _> = serde_json::from_str(&format!("\"{}\"", env_value));
+            if let Ok(val) = plain_value {
+                return Ok(val);
+            }
+        }
+    }
+    
+    // If not found in runtime_output.env, try the original .env
     dotenvy::from_filename_override(ENV_FILE_PATH).ok();
-
+    
     // Get the environment variable
     let env_value = env::var(variable_name)?;
 
@@ -175,23 +231,14 @@ pub async fn tokio_spawn_blocking_turnkey_signer_keys(
 pub fn get_turnkey_signers_from_env(
     private_key_id_env: &str,
     public_key_env: &str,
-) -> Result<(Box<dyn Signer + Send>, AeKey, ElGamalKeypair), String> {
+) -> Result<Box<dyn Signer + Send>, String> {
     let private_key_id = private_key_id_env.to_string();
     let public_key = public_key_env.to_string();
     
     let signer = get_turnkey_signer(&private_key_id, &public_key)
         .map_err(|e| e.to_string())?;
     
-    // let elgamal_keypair = ElGamalKeypair::new_from_signer(&signer, &signer.pubkey().to_bytes())
-    //     .map_err(|e| e.to_string())?;
-    
-    // let aes_key = AeKey::new_from_signer(&signer, &signer.pubkey().to_bytes())
-    //     .map_err(|e| e.to_string())?;
-
-    let elgamal_keypair = ElGamalKeypair::new_rand();
-    let aes_key = AeKey::new_rand();
-    
-    Ok((signer, aes_key, elgamal_keypair))
+    Ok(signer)
 }
 
 pub async fn get_gcp_signer_from_env(
