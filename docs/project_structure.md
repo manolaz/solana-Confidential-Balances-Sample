@@ -24,6 +24,6 @@ mod tests {
 }
 ```
 ### Dependency Organization
-All dependencies live in the workspace [`Cargo.toml`](./Cargo.toml).  
+All dependencies live in the workspace [`Cargo.toml`](../Cargo.toml).  
 Each ingredient/recipe references dependencies in the workspace.
 
